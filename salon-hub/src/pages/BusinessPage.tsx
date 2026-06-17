@@ -1,10 +1,16 @@
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Check, ChevronRight, ExternalLink, Eye, MapPin, MessageSquare, Pencil, Share2 } from "lucide-react";
+import { Check, ChevronRight, ExternalLink, Eye, MapPin, MessageSquare, Pencil, Share2, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { businessService, type Business } from "@/services/businessService";
 import { serviceService, type Service } from "@/services/serviceService";
 import { useNavigate } from "react-router-dom";
 import { useNavigation } from "@/utils/navigationUtils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 function formatMoney(value?: number) {
   if (typeof value !== "number") return "Price not set";
@@ -52,6 +58,13 @@ export default function BusinessPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Edit dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "", phone: "", description: "", address: "", category: "", website: "", email: ""
+  });
+  const [saving, setSaving] = useState(false);
+
   const publicUrl = useMemo(() => {
     if (!business?.name) return "";
     return `${business.name.toLowerCase().replace(/\s+/g, "-")}.booksy.com`;
@@ -78,6 +91,16 @@ export default function BusinessPage() {
       .then(([businessPayload, servicePayload]) => {
         setBusiness(businessPayload);
         setServices(Array.isArray(servicePayload) ? servicePayload : []);
+        // Pre-populate edit form
+        setEditForm({
+          name: businessPayload.name ?? "",
+          phone: businessPayload.phone ?? "",
+          description: businessPayload.description ?? "",
+          address: businessPayload.address ?? "",
+          category: businessPayload.category ?? "",
+          website: businessPayload.website ?? "",
+          email: businessPayload.email ?? "",
+        });
       })
       .catch((e: unknown) => {
         setError(e instanceof Error ? e.message : "Could not load business data.");
@@ -94,7 +117,32 @@ export default function BusinessPage() {
   };
 
   const handleEditProfile = () => {
-    navigate(`${getPath("setup")}?focus=business`);
+    setEditOpen(true);
+  };
+
+  const handleSaveProfile = async () => {
+    const businessIdRaw = localStorage.getItem("currentBusinessId");
+    const businessId = businessIdRaw ? Number.parseInt(businessIdRaw, 10) : NaN;
+    if (!Number.isFinite(businessId) || businessId <= 0) return;
+    setSaving(true);
+    try {
+      const updated = await businessService.updateBusiness(businessId, {
+        name: editForm.name,
+        phone: editForm.phone || undefined,
+        description: editForm.description || undefined,
+        address: editForm.address || undefined,
+        category: editForm.category || undefined,
+        website: editForm.website || undefined,
+        email: editForm.email || undefined,
+      });
+      setBusiness(updated);
+      setEditOpen(false);
+      toast.success("Business profile updated");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to save changes");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handlePreview = () => {
@@ -372,6 +420,84 @@ export default function BusinessPage() {
           </div>
         ) : null}
       </div>
+
+      {/* Edit Business Profile Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Business Profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Business Name *</Label>
+              <Input
+                value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Your business name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Phone</Label>
+                <Input
+                  value={editForm.phone}
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                  placeholder="+1 555 0100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={editForm.email}
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="hello@example.com"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Input
+                value={editForm.category}
+                onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                placeholder="e.g. Hair Salon, Spa, Barbershop"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <Input
+                value={editForm.address}
+                onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+                placeholder="123 Main St, City, Country"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Website</Label>
+              <Input
+                value={editForm.website}
+                onChange={e => setEditForm(f => ({ ...f, website: e.target.value }))}
+                placeholder="https://example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={editForm.description}
+                onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Tell clients what makes your business special..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveProfile} disabled={saving || !editForm.name.trim()}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

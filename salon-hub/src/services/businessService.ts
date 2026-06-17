@@ -90,6 +90,10 @@ class BusinessService {
     return apiClient.get<Business[]>(`/businesses/owner/${ownerId}`);
   }
 
+  async updateBusiness(id: number, data: Partial<BusinessRequest>, _accessToken?: string): Promise<Business> {
+    return apiClient.put<Business>(`/businesses/${id}`, data);
+  }
+
   async createBranch(data: BranchRequest, _accessToken?: string): Promise<Branch> {
     return apiClient.post<Branch>(`/businesses/${data.businessId}/branches`, data);
   }
