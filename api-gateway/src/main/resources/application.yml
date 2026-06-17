@@ -359,11 +359,13 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns: 
+            allowedOriginPatterns:
               - "http://localhost:5173"
               - "http://localhost:3000"
               - "https://salon-hub-omega.vercel.app"
               - "https://*.vercel.app"
+              - "http://187.124.190.92"
+              - "http://${VPS_IP:187.124.190.92}"
             allowedMethods:
               - GET
               - POST
@@ -372,7 +374,7 @@ spring:
               - OPTIONS
               - PATCH
             allowedHeaders: "Content-Type,Authorization,X-Requested-With"
-            allowCredentials: true
+            allowCredentials: false
             maxAge: 3600
 
 eureka:
