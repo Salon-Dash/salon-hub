@@ -62,9 +62,9 @@ public class StaffController {
     @GetMapping("/{staffId}/working-hours")
     public ResponseEntity<?> getWorkingHours(@PathVariable Long staffId) {
         StaffDto staff = staffService.getById(staffId);
-        return ResponseEntity.ok(staff.getWorkingHoursStart() != null
-                ? java.util.Map.of("workingHoursStart", staff.getWorkingHoursStart(),
-                                   "workingHoursEnd", staff.getWorkingHoursEnd())
+        return ResponseEntity.ok(staff.workingHoursStart() != null
+                ? java.util.Map.of("workingHoursStart", staff.workingHoursStart(),
+                                   "workingHoursEnd", staff.workingHoursEnd())
                 : java.util.Map.of());
     }
 
