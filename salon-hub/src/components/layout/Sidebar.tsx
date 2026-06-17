@@ -1,14 +1,17 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Users,
   Package,
   ChevronDown,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState } from "react";
 import { LanguageModal } from "./LanguageModal";
 import { useBusinessId } from "@/hooks/useBusinessId";
+import { authService } from "@/services/authService";
+import { clearAuthData } from "@/utils/authUtils";
 
 // Custom Calendar Icon Component
 const CalendarIcon = ({ className, size = 24 }: { className?: string; size?: number }) => {
@@ -319,10 +322,17 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const businessId = useBusinessId();
   const [selectedLanguage, setSelectedLanguage] = useState("pl");
   const [selectedTheme, setSelectedTheme] = useState("light");
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await authService.logout();
+    clearAuthData();
+    navigate('/login', { replace: true });
+  };
   
   // Helper function to get the full path with businessId
   const getPath = (path: string): string => {
@@ -450,19 +460,35 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom Section - Theme Selector */}
+      {/* Bottom Section - Theme Selector + Logout */}
       <div className="flex flex-col items-center gap-2.5 pt-2 pb-4 border-t border-[#2a2a2a]/50">
         {/* Link/Chain Icon */}
         <div className="w-10 h-10 rounded-full border border-white/20 bg-white/5 flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors group">
           <GlobeIcon size={16} className="text-white/40 group-hover:text-white/60" />
         </div>
-        
+
         {/* Theme Selector */}
         <div className="relative">
           <div className="w-10 h-10 rounded-full border border-white/20 bg-white/5 flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors">
             <span className="text-[8px] font-semibold text-white/40 uppercase tracking-wider">THEM</span>
           </div>
         </div>
+
+        {/* Logout */}
+        <Tooltip delayDuration={200}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleLogout}
+              className="w-10 h-10 rounded-full border border-white/20 bg-white/5 flex items-center justify-center cursor-pointer hover:bg-red-500/20 hover:border-red-500/40 transition-colors group"
+              aria-label="Logout"
+            >
+              <LogOut size={16} className="text-white/40 group-hover:text-red-400" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="bg-[#1a1a1a] text-white border-none px-3 py-1.5 text-sm">
+            Logout
+          </TooltipContent>
+        </Tooltip>
       </div>
     </aside>
 

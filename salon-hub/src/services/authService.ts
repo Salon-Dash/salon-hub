@@ -197,6 +197,20 @@ class AuthService {
     }
   }
 
+  async logout(): Promise<void> {
+    const refreshToken = localStorage.getItem('refreshToken');
+    try {
+      if (refreshToken) {
+        await this.request<void>('/auth/logout', {
+          method: 'POST',
+          body: JSON.stringify({ refreshToken }),
+        });
+      }
+    } catch {
+      // Silently ignore — clear local state regardless
+    }
+  }
+
   async refreshToken(refreshToken: string): Promise<AuthResponse> {
     return this.request<AuthResponse>('/auth/refresh', {
       method: 'POST',
