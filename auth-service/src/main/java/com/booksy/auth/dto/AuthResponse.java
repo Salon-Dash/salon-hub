@@ -1,7 +1,7 @@
 package com.booksy.auth.dto;
 
 public record AuthResponse(
-        String token,
+        String accessToken,
         String refreshToken,
         Long userId,
         String fullName,
