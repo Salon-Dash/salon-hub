@@ -4,6 +4,7 @@ import {
   Package,
   ChevronDown,
   LogOut,
+  Clock as ClockIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -316,6 +317,7 @@ const navItems: NavItem[] = [
   { icon: AnalyticsIcon, label: "Analytics", path: "/analytics" },
   { icon: StaffIcon, label: "Staff", path: "/staff" },
   { icon: BusinessIcon, label: "Business", path: "/business" },
+  { icon: ClockIcon, label: "Hours", path: "/business-hours" },
   { icon: SettingsIcon, label: "Settings", path: "/setup" },
   // { icon: HelpIcon, label: "Help", path: "/help" }, // Disabled
 ];

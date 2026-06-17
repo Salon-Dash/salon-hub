@@ -40,7 +40,7 @@ const settingsCategories: SettingsCategory[] = [
     mainPath: "business",
     items: [
       { label: "Business Profile", path: "business" },
-      { label: "Opening Hours", path: "staff" },
+      { label: "Opening Hours", path: "business-hours" },
       { label: "Locations" },
     ],
     color: "text-appointment-blue",

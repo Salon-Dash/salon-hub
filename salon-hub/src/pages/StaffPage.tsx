@@ -1389,9 +1389,32 @@ export default function StaffPage() {
               </Button>
               <Button
                 className="flex-1 bg-gray-900 hover:bg-gray-800"
-                onClick={() => {
-                  // TODO: Save business hours
-                  console.log("Save business hours:", businessHoursForm);
+                onClick={async () => {
+                  const dayOfWeek = format(selectedDate, "EEEE").toUpperCase();
+                  try {
+                    // Merge the edited day into the full schedule and save all days
+                    const { businessHoursService } = await import('@/services/businessHoursService');
+                    const existing = businessHours.filter(h => h.dayOfWeek !== dayOfWeek);
+                    const updated = [
+                      ...existing.map(h => ({
+                        dayOfWeek: h.dayOfWeek,
+                        enabled: h.enabled,
+                        startTime: h.startTime ?? "09:00",
+                        endTime: h.endTime ?? "18:00",
+                      })),
+                      {
+                        dayOfWeek,
+                        enabled: !businessHoursForm.isClosed,
+                        startTime: businessHoursForm.startTime,
+                        endTime: businessHoursForm.endTime,
+                      },
+                    ];
+                    const currentBizId = typeof businessId === 'number' ? businessId : parseInt(String(businessId) || '0');
+                    await businessHoursService.updateBusinessHours(currentBizId, updated);
+                    toast.success(`${format(selectedDate, "EEEE")} hours updated`);
+                  } catch {
+                    toast.error("Failed to save business hours");
+                  }
                   setIsEditBusinessHoursOpen(false);
                 }}
               >
