@@ -113,6 +113,22 @@ public class ServiceCatalogService {
         return new CategoryDto(saved.getId(), saved.getBusinessId(), saved.getName(), saved.getDescription());
     }
 
+    @Transactional
+    public CategoryDto updateCategory(Long id, String name, String description) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Category not found"));
+        if (name != null) category.setName(name);
+        if (description != null) category.setDescription(description);
+        Category saved = categoryRepository.save(category);
+        return new CategoryDto(saved.getId(), saved.getBusinessId(), saved.getName(), saved.getDescription());
+    }
+
+    @Transactional
+    public void deleteCategory(Long id) {
+        categoryRepository.deleteById(id);
+    }
+
     private ServiceDto toDto(ServiceEntity s) {
         String categoryName = s.getCategoryId() != null
             ? categoryRepository.findById(s.getCategoryId()).map(Category::getName).orElse(null)

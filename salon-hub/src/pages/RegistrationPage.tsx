@@ -368,6 +368,29 @@ const RegistrationPage = () => {
       localStorage.setItem('currentBusinessId', business.id.toString());
       localStorage.setItem('currentBusiness', JSON.stringify(business));
 
+      // Save business hours selected during registration
+      const DAY_MAP: Record<string, string> = {
+        monday: 'MONDAY', tuesday: 'TUESDAY', wednesday: 'WEDNESDAY',
+        thursday: 'THURSDAY', friday: 'FRIDAY', saturday: 'SATURDAY', sunday: 'SUNDAY',
+      };
+      try {
+        const hoursPayload = Object.entries(formData.businessHours).map(([day, val]) => {
+          const [start, end] = val.hours.includes('-')
+            ? val.hours.split('-').map((t: string) => t.trim())
+            : ['09:00', '17:00'];
+          return {
+            dayOfWeek: DAY_MAP[day] || day.toUpperCase(),
+            enabled: val.enabled,
+            startTime: start,
+            endTime: end,
+          };
+        });
+        const { businessHoursService } = await import('@/services/businessHoursService');
+        await businessHoursService.updateBusinessHours(business.id, hoursPayload);
+      } catch {
+        // Non-fatal — hours can be set later in settings
+      }
+
       toast.success("Registration completed! Welcome to Booksy!");
 
       // Redirect to portal (home page)
