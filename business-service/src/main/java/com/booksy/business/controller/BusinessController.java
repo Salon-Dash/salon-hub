@@ -4,12 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,27 +41,20 @@ public class BusinessController {
                 ? address + ", " + city + (country != null ? ", " + country : "")
                 : address;
 
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbc.update(con -> {
-            PreparedStatement ps = con.prepareStatement(
-                    "INSERT INTO businesses (name, owner_id, category, address, latitude, longitude, phone, status) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')",
-                    Statement.RETURN_GENERATED_KEYS);
-            ps.setString(1, name);
-            if (ownerId != null) ps.setLong(2, ownerId); else ps.setNull(2, java.sql.Types.BIGINT);
-            ps.setString(3, category);
-            ps.setString(4, fullAddress);
-            if (latitude != null) ps.setDouble(5, latitude); else ps.setNull(5, java.sql.Types.DOUBLE);
-            if (longitude != null) ps.setDouble(6, longitude); else ps.setNull(6, java.sql.Types.DOUBLE);
-            ps.setString(7, phone);
-            return ps;
-        }, keyHolder);
-
-        Number generatedId = keyHolder.getKey();
-        Long businessId = generatedId != null ? generatedId.longValue() : null;
+        // Use RETURNING id — PostgreSQL native, avoids KeyHolder issues
+        Long businessId = jdbc.queryForObject(
+                "INSERT INTO businesses (name, owner_id, category, address, latitude, longitude, phone, status) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE') RETURNING id",
+                Long.class,
+                name, ownerId, category, fullAddress, latitude, longitude, phone);
 
         log.info("Created business id={} name='{}' ownerId={}", businessId, name, ownerId);
-        return getBusinessById(businessId);
+
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT id, name, owner_id, category, address, latitude, longitude, phone, website, description, status, created_at " +
+                "FROM businesses WHERE id = ?", businessId);
+        if (rows.isEmpty()) return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(rows.get(0)));
     }
 
     /** GET /api/businesses/{id} — get business by ID */

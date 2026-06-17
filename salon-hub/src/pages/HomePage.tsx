@@ -1,6 +1,8 @@
 import { AppLayout, PageHeader } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Calendar, DollarSign, Users, TrendingUp, Clock, Star, Building2, Bell } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -56,6 +58,9 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [noBusiness, setNoBusiness] = useState(false);
+  const [newBizName, setNewBizName] = useState("");
+  const [creatingBiz, setCreatingBiz] = useState(false);
 
   const playNotificationPreview = () => {
     const playFallbackBeep = () => {
@@ -117,10 +122,11 @@ export default function HomePage() {
           return;
         }
 
-        // If user has no businesses, show message
+        // If user has no businesses, show inline creation prompt
         if (userBusinesses.length === 0) {
-          console.warn("No businesses found for user");
-          // Don't show error toast - user might be registering for the first time
+          setNoBusiness(true);
+          setLoading(false);
+          return;
         }
       } catch (error: any) {
         console.error("Error loading businesses:", error);
@@ -134,6 +140,56 @@ export default function HomePage() {
 
     loadBusinesses();
   }, [businessId, navigate]);
+
+  const handleCreateBusiness = async () => {
+    if (!newBizName.trim()) { toast.error("Enter your business name"); return; }
+    setCreatingBiz(true);
+    try {
+      const userStr = localStorage.getItem("user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      const business = await businessService.createBusiness({ ownerId: user?.id, name: newBizName.trim() });
+      localStorage.setItem("currentBusinessId", business.id.toString());
+      localStorage.setItem("currentBusiness", JSON.stringify(business));
+      toast.success("Business created!");
+      navigate(`/${business.id}/calendar`, { replace: true });
+    } catch {
+      toast.error("Failed to create business. Please try again.");
+    } finally {
+      setCreatingBiz(false);
+    }
+  };
+
+  // No business found — show creation prompt
+  if (noBusiness) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <Building2 className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Set up your business</CardTitle>
+              <CardDescription>Create your first business to get started with Booksy.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="bizName">Business name</Label>
+                <Input
+                  id="bizName"
+                  placeholder="e.g. Glamour Studio"
+                  value={newBizName}
+                  onChange={e => setNewBizName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleCreateBusiness()}
+                />
+              </div>
+              <Button className="w-full" onClick={handleCreateBusiness} disabled={creatingBiz}>
+                {creatingBiz ? "Creating…" : "Create Business"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </AppLayout>
+    );
+  }
 
   // If we're on a business-specific route, show the regular dashboard
   if (businessId) {
