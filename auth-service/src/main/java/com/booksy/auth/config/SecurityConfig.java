@@ -33,8 +33,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public auth endpoints (register, login)
                         .requestMatchers("/api/public/**").permitAll()
-                        // Business registration called by admin dashboard (no token yet)
-                        .requestMatchers("/api/auth/register/business").permitAll()
+                        // Admin dashboard uses /api/auth/login and /api/auth/register/business
+                        // (not /api/public/ paths) — permit them without a token
+                        .requestMatchers("/api/auth/login", "/api/auth/register/business").permitAll()
                         // Actuator health check for load-balancers / Eureka
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         // Everything else under /api/auth/** requires a valid JWT

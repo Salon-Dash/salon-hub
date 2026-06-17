@@ -73,6 +73,18 @@ public class AuthController {
     // -------------------------------------------------------------------------
 
     /**
+     * POST /api/auth/login
+     * Login alias for the admin dashboard (calls /api/auth/login, not the /public path).
+     * Permitted without a JWT (whitelisted in SecurityConfig).
+     */
+    @PostMapping("/api/auth/login")
+    public ResponseEntity<AuthResponse> loginAlias(@Valid @RequestBody LoginRequest request) {
+        log.info("POST /api/auth/login (alias) — [{}]", request.emailOrPhone());
+        AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * POST /api/auth/register/business
      * Business owner registration — called by the admin dashboard on the sign-up page.
      * Permitted without a JWT (whitelisted in SecurityConfig).
