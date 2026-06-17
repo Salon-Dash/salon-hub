@@ -135,9 +135,9 @@ spring:
                 deny-empty-key: false
                 empty-key-status-code: 429
 
-        # Client Service — authenticated API limit
-        - id: client-service
-          uri: lb://client-service
+        # Client Service — routed to booking-service (client data extracted from appointments)
+        - id: client-booking-service
+          uri: lb://booking-service
           predicates:
             - Path=/api/clients/**
           filters:
@@ -187,9 +187,9 @@ spring:
                 deny-empty-key: false
                 empty-key-status-code: 429
 
-        # Sales Service — authenticated API limit
-        - id: sales-service
-          uri: lb://sales-service
+        # Sales — routed to booking-service (sales = appointments + payments)
+        - id: sales-booking-service
+          uri: lb://booking-service
           predicates:
             - Path=/api/sales/**
           filters:
@@ -356,13 +356,12 @@ spring:
                 deny-empty-key: false
                 empty-key-status-code: 429
 
-        # Analysis Service — authenticated API limit
-        - id: analysis-service
-          uri: lb://analysis-service
+        # Analytics — routed to booking-service (analytics derived from appointments table)
+        - id: analytics-booking-service
+          uri: lb://booking-service
           predicates:
             - Path=/api/analytics/**
           filters:
-            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"

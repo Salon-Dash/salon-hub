@@ -281,9 +281,9 @@ public class BookingController {
 
     @GetMapping("/business/{businessId}/clients")
     public List<Map<String, Object>> getClientsByBusiness(@PathVariable int businessId) {
-        return jdbcTemplate.queryForList(
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 "SELECT DISTINCT ON (LOWER(COALESCE(client_name, '')), COALESCE(client_phone, ''), COALESCE(client_email, '')) " +
-                "client_id, client_name, client_phone, client_email, " +
+                "COALESCE(client_id, 0) AS client_id, client_name, client_phone, client_email, business_id, " +
                 "COUNT(*) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS total_visits, " +
                 "SUM(price) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS total_spent, " +
                 "MAX(appointment_date) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS last_visit_date, " +
@@ -295,6 +295,46 @@ public class BookingController {
                 "ORDER BY LOWER(COALESCE(client_name, '')), COALESCE(client_phone, ''), COALESCE(client_email, ''), appointment_date DESC",
                 businessId
         );
+        // Map to camelCase ClientWithStats structure expected by the frontend
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> dto = new java.util.LinkedHashMap<>();
+            Object rawName = row.get("client_name");
+            String fullName = rawName != null ? rawName.toString().trim() : "";
+            String[] parts = fullName.split("\\s+", 2);
+            dto.put("id", row.getOrDefault("client_id", 0));
+            dto.put("businessId", row.getOrDefault("business_id", businessId));
+            dto.put("firstName", parts.length > 0 ? parts[0] : fullName);
+            dto.put("lastName", parts.length > 1 ? parts[1] : null);
+            dto.put("email", row.get("client_email"));
+            dto.put("phone", row.get("client_phone"));
+            dto.put("birthday", null);
+            dto.put("gender", null);
+            dto.put("address", null);
+            dto.put("city", null);
+            dto.put("state", null);
+            dto.put("zipCode", null);
+            dto.put("country", null);
+            dto.put("notes", null);
+            dto.put("avatarUrl", null);
+            dto.put("preferredLanguage", null);
+            dto.put("preferredContactMethod", null);
+            dto.put("status", "ACTIVE");
+            dto.put("allowMarketingEmails", null);
+            dto.put("allowSmsNotifications", null);
+            dto.put("createdAt", null);
+            dto.put("updatedAt", null);
+            dto.put("totalVisits", row.getOrDefault("total_visits", 0));
+            dto.put("totalSpent", row.getOrDefault("total_spent", null));
+            Object lastVisit = row.get("last_visit_date");
+            dto.put("lastVisitDate", lastVisit != null ? lastVisit.toString() : null);
+            dto.put("pendingAppointments", row.getOrDefault("pending_appointments", 0));
+            dto.put("confirmedAppointments", row.getOrDefault("confirmed_appointments", 0));
+            dto.put("completedAppointments", row.getOrDefault("completed_appointments", 0));
+            dto.put("cancelledAppointments", row.getOrDefault("cancelled_appointments", 0));
+            result.add(dto);
+        }
+        return result;
     }
 
     @PutMapping("/{bookingId}/cancel")
