@@ -75,12 +75,16 @@ public class StaffController {
         return ResponseEntity.status(HttpStatus.CREATED).body(staffService.create(request));
     }
 
-    /** POST /api/staff/business/{businessId} — dashboard pattern */
+    /** POST /api/staff/business/{businessId} — dashboard pattern (businessId from path) */
     @PostMapping("/business/{businessId}")
     public ResponseEntity<StaffDto> createStaffForBusiness(@PathVariable Long businessId,
                                                              @RequestBody StaffCreateRequest request) {
         log.info("POST /api/staff/business/{} name='{}'", businessId, request.name());
-        return ResponseEntity.status(HttpStatus.CREATED).body(staffService.create(request));
+        // Inject businessId from path if not provided in body
+        StaffCreateRequest withBiz = request.businessId() != null ? request
+                : new StaffCreateRequest(businessId, request.name(), request.email(),
+                        request.phone(), request.position(), request.avatarUrl(), request.schedule());
+        return ResponseEntity.status(HttpStatus.CREATED).body(staffService.create(withBiz));
     }
 
     /** PUT /api/staff/{id} — update staff */
