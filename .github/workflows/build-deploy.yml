@@ -241,19 +241,19 @@ jobs:
               docker pull "ghcr.io/salon-dash/salon-hub/${svc}:latest" || true
             done
 
-            # Restart only changed services (zero-downtime for unchanged ones)
+            # Restart only changed services with their new 'latest' image
+            # (IMAGE_TAG is the commit SHA — only services rebuilt this run have it)
             echo "$CHANGED_SERVICES" | tr -d '[]"' | tr ',' '\n' | grep -v '^$' | while read svc; do
               svc=$(echo "$svc" | tr -d ' ')
               [ -z "$svc" ] && continue
-              # Map service name to compose service name
-              compose_svc=$(echo "$svc" | sed 's/-/_/g')
-              echo "Restarting: $svc"
-              docker compose -f docker-compose.prod.yml up -d --no-deps "$svc" 2>/dev/null || \
-              docker compose -f docker-compose.prod.yml up -d --no-deps "$compose_svc" 2>/dev/null || true
+              echo "Pulling + restarting: $svc"
+              docker pull "ghcr.io/salon-dash/salon-hub/${svc}:latest" || true
+              # Use latest tag (not commit SHA) since only changed services were built
+              IMAGE_TAG=latest docker compose -f docker-compose.prod.yml up -d --no-deps "$svc" 2>/dev/null || true
             done
 
-            # Ensure infra services are up (postgres, redis, eureka, api-gateway)
-            docker compose -f docker-compose.prod.yml up -d postgres redis eureka-server api-gateway
+            # Ensure infra services are up — always use 'latest' (they may not have been rebuilt)
+            IMAGE_TAG=latest docker compose -f docker-compose.prod.yml up -d postgres redis eureka-server api-gateway
 
             # Prune old images
             docker image prune -f
