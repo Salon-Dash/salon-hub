@@ -342,21 +342,34 @@ const RegistrationPage = () => {
         services: formData.services.length > 0 ? JSON.stringify(formData.services) : undefined,
       });
 
-      const { accessToken, user, business } = authResponse;
+      const { accessToken, refreshToken, userId, fullName, email, role } = authResponse as any;
 
-      // Store tokens in localStorage
+      // Store tokens FIRST so apiClient can use them for the business creation call
       localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', authResponse.refreshToken);
+      localStorage.setItem('refreshToken', refreshToken);
+
+      // Build user object from auth response fields (AuthResponse has no nested user)
+      const user = { id: userId, fullName, email, role };
       localStorage.setItem('user', JSON.stringify(user));
 
-      // Store business information if available
-      if (business) {
-        localStorage.setItem('currentBusinessId', business.id.toString());
-        localStorage.setItem('currentBusiness', JSON.stringify(business));
-      }
+      // Create the business in business-service now that we have a userId + token
+      const business = await businessService.createBusiness({
+        ownerId: userId,
+        name: formData.businessName,
+        category: formData.category || undefined,
+        address: formData.address || undefined,
+        city: formData.address?.split(',')[1]?.trim() || undefined,
+        country: formData.country || undefined,
+        latitude: formData.latitude || undefined,
+        longitude: formData.longitude || undefined,
+        phone: fullPhone || undefined,
+      });
+
+      localStorage.setItem('currentBusinessId', business.id.toString());
+      localStorage.setItem('currentBusiness', JSON.stringify(business));
 
       toast.success("Registration completed! Welcome to Booksy!");
-      
+
       // Redirect to portal (home page)
       navigate('/');
     } catch (error: any) {
