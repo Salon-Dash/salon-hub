@@ -7,6 +7,10 @@ x-common-env: &common-env
   SPRING_DATA_REDIS_HOST: redis
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
   JWT_SECRET: ${JWT_SECRET}
+  # Flyway: each service uses its own history table so shared 'public' schema
+  # doesn't cause checksum conflicts between services
+  SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+  SPRING_FLYWAY_BASELINE_VERSION: "0"
 
 x-spring-healthcheck: &spring-healthcheck
   interval: 30s
@@ -92,6 +96,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8082
+      SPRING_FLYWAY_TABLE: flyway_history_auth
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,6 +116,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8084
+      SPRING_FLYWAY_TABLE: flyway_history_booking
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
       SERVICES_NOTIFICATION_URL: http://notification-service:8090
@@ -135,6 +141,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8085
+      SPRING_FLYWAY_TABLE: flyway_history_business
     depends_on:
       postgres:
         condition: service_healthy
@@ -154,6 +161,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8086
+      SPRING_FLYWAY_TABLE: flyway_history_staff
     depends_on:
       postgres:
         condition: service_healthy
@@ -173,6 +181,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8087
+      SPRING_FLYWAY_TABLE: flyway_history_catalog
     depends_on:
       postgres:
         condition: service_healthy
@@ -192,6 +201,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8088
+      SPRING_FLYWAY_TABLE: flyway_history_biz_hours
       SPRING_CACHE_TYPE: redis
     depends_on:
       postgres:
@@ -212,6 +222,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8089
+      SPRING_FLYWAY_TABLE: flyway_history_timeoff
     depends_on:
       postgres:
         condition: service_healthy
@@ -231,6 +242,7 @@ services:
     environment:
       <<: *common-env
       SERVER_PORT: 8090
+      SPRING_FLYWAY_TABLE: flyway_history_notification
       NOTIFICATION_EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
