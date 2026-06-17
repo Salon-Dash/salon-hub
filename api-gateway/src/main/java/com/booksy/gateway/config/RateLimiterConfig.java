@@ -11,6 +11,7 @@ import reactor.core.publisher.Mono;
 public class RateLimiterConfig {
 
     // Rate limit per IP address — used for public and auth routes
+    @Primary
     @Bean
     public KeyResolver ipKeyResolver() {
         return exchange -> {
