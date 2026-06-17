@@ -11,6 +11,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   flyway:
     baseline-on-migrate: true
+    baseline-version: 0
     table: flyway_history_auth_service
     enabled: true
     locations: classpath:db/migration

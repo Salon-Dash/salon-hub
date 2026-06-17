@@ -28,6 +28,7 @@ spring:
           batch_size: 20
   flyway:
     baseline-on-migrate: true
+    baseline-version: 0
     table: flyway_history_notification_service
     enabled: true
     locations: classpath:db/migration
