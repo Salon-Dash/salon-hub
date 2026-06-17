@@ -33,6 +33,7 @@ spring:
         jdbc:
           batch_size: 20
   flyway:
+    baseline-on-migrate: true
     table: flyway_history_staff_service
     enabled: true
     locations: classpath:db/migration

@@ -4,6 +4,7 @@ import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import reactor.core.publisher.Mono;
 
 @Configuration
@@ -69,6 +70,7 @@ public class RateLimiterConfig {
     }
 
     // Authenticated API routes: 60 req/s sustained, burst up to 100
+    @Primary
     @Bean
     public RedisRateLimiter apiRateLimiter() {
         return new RedisRateLimiter(60, 100, 1);
