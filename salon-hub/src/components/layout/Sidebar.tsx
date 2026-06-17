@@ -308,9 +308,9 @@ const languages = [
 const navItems: NavItem[] = [
   { icon: CalendarIcon, label: "Calendar", path: "/calendar" },
   { icon: TaskIcon, label: "Sales", path: "/sales" },
-  { icon: ItemCategoryIcon, label: "Item & Category", path: "/items-category" },
+  { icon: ItemCategoryIcon, label: "Services", path: "/services" },
   { icon: Users, label: "Clients", path: "/clients" },
-  // { icon: Package, label: "Inventory", path: "/inventory" }, // Disabled
+  { icon: Package, label: "Inventory", path: "/inventory" },
   // { icon: MarketingIcon, label: "Marketing", path: "/marketing" }, // Disabled
   // { icon: CouponIcon, label: "Coupon", path: "/contacts" }, // Disabled
   { icon: AnalyticsIcon, label: "Analytics", path: "/analytics" },

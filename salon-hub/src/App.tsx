@@ -126,6 +126,7 @@ const App = () => (
               <Route path="shopping" element={<Suspense fallback={<PageLoader />}><SalesPage /></Suspense>} />
               <Route path="sales" element={<Suspense fallback={<PageLoader />}><SalesPage /></Suspense>} />
               <Route path="items-category" element={<Suspense fallback={<PageLoader />}><ItemsCategoryPage /></Suspense>} />
+              <Route path="services" element={<Suspense fallback={<PageLoader />}><ServicesPage /></Suspense>} />
               <Route path="add-service" element={<Suspense fallback={<PageLoader />}><AddServicePage /></Suspense>} />
               <Route path="edit-service/:id" element={<Suspense fallback={<PageLoader />}><AddServicePage /></Suspense>} />
               <Route path="add-combo-service" element={<Suspense fallback={<PageLoader />}><AddComboServicePage /></Suspense>} />
