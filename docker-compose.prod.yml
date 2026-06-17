@@ -77,6 +77,11 @@ services:
       <<: *common-env
       SERVER_PORT: 8080
       EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      # Disable Spring Security auto-config — gateway is a transparent proxy.
+      # Each downstream service enforces its own JWT auth.
+      SPRING_AUTOCONFIGURE_EXCLUDE: >-
+        org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration,
+        org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration
     depends_on:
       eureka-server:
         condition: service_healthy
