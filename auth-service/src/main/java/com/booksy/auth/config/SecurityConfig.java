@@ -39,7 +39,8 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/register/business",
                                 "/api/auth/refresh",
-                                "/api/auth/logout"
+                                "/api/auth/logout",
+                                "/api/auth/validate"
                         ).permitAll()
                         // Actuator health check for load-balancers / Eureka
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
