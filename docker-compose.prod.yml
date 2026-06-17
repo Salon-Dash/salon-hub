@@ -1,7 +1,5 @@
 version: '3.9'
 
-x-image-base: &image-base ghcr.io/salon-dash/salon-hub
-
 x-common-env: &common-env
   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/booksy_platform
   SPRING_DATASOURCE_USERNAME: ${DB_USER:-booksy}
@@ -10,21 +8,16 @@ x-common-env: &common-env
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
   JWT_SECRET: ${JWT_SECRET}
 
-x-restart: &restart
-  restart: unless-stopped
-
-x-healthcheck-spring: &healthcheck-spring
-  healthcheck:
-    test: ["CMD-SHELL", "curl -sf http://localhost:${SERVER_PORT:-8080}/actuator/health || exit 1"]
-    interval: 30s
-    timeout: 5s
-    retries: 3
-    start_period: 60s
+x-spring-healthcheck: &spring-healthcheck
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 90s
 
 services:
   postgres:
     image: postgres:15-alpine
-    <<: *restart
+    restart: unless-stopped
     environment:
       POSTGRES_DB: booksy_platform
       POSTGRES_USER: ${DB_USER:-booksy}
@@ -43,7 +36,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    <<: *restart
+    restart: unless-stopped
     command: redis-server --save "" --appendonly no
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -56,21 +49,24 @@ services:
           memory: 128m
 
   eureka-server:
-    image: *image-base/eureka-server:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/eureka-server:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     environment:
       SERVER_PORT: 8761
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8761/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
           memory: 256m
 
   api-gateway:
-    image: *image-base/api-gateway:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/api-gateway:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"
     environment:
@@ -82,14 +78,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
           memory: 320m
 
   auth-service:
-    image: *image-base/auth-service:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/auth-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     environment:
       <<: *common-env
       SERVER_PORT: 8082
@@ -98,14 +97,17 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8082/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
           memory: 320m
 
   booking-service:
-    image: *image-base/booking-service:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/booking-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     environment:
       <<: *common-env
       SERVER_PORT: 8084
@@ -119,14 +121,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8084/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
           memory: 512m
 
   business-service:
-    image: *image-base/business-service:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/business-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     environment:
       <<: *common-env
       SERVER_PORT: 8085
@@ -135,14 +140,17 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8085/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
           memory: 320m
 
   staff-service:
-    image: *image-base/staff-service:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/staff-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     environment:
       <<: *common-env
       SERVER_PORT: 8086
@@ -151,14 +159,17 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8086/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
           memory: 256m
 
   service-catalog-service:
-    image: *image-base/service-catalog-service:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/service-catalog-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     environment:
       <<: *common-env
       SERVER_PORT: 8087
@@ -167,14 +178,17 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8087/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
           memory: 256m
 
   business-hours-service:
-    image: *image-base/business-hours-service:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/business-hours-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     environment:
       <<: *common-env
       SERVER_PORT: 8088
@@ -184,14 +198,17 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8088/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
           memory: 256m
 
   time-off-service:
-    image: *image-base/time-off-service:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/time-off-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     environment:
       <<: *common-env
       SERVER_PORT: 8089
@@ -200,14 +217,17 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8089/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
           memory: 256m
 
   notification-service:
-    image: *image-base/notification-service:${IMAGE_TAG:-latest}
-    <<: [*restart, *healthcheck-spring]
+    image: ghcr.io/salon-dash/salon-hub/notification-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     environment:
       <<: *common-env
       SERVER_PORT: 8090
@@ -222,6 +242,9 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8090/actuator/health || exit 1"]
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
