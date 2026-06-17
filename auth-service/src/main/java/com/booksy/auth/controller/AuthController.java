@@ -74,13 +74,18 @@ public class AuthController {
 
     /**
      * POST /api/auth/login
-     * Login alias for the admin dashboard (calls /api/auth/login, not the /public path).
-     * Permitted without a JWT (whitelisted in SecurityConfig).
+     * Login alias for the admin dashboard. Dashboard sends {email, password} but
+     * LoginRequest uses emailOrPhone — accept both field names via raw map.
      */
     @PostMapping("/api/auth/login")
-    public ResponseEntity<AuthResponse> loginAlias(@Valid @RequestBody LoginRequest request) {
-        log.info("POST /api/auth/login (alias) — [{}]", request.emailOrPhone());
-        AuthResponse response = authService.login(request);
+    public ResponseEntity<AuthResponse> loginAlias(@RequestBody java.util.Map<String, String> body) {
+        String emailOrPhone = body.getOrDefault("emailOrPhone", body.get("email"));
+        String password = body.get("password");
+        if (emailOrPhone == null || emailOrPhone.isBlank() || password == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        log.info("POST /api/auth/login (alias) — [{}]", emailOrPhone);
+        AuthResponse response = authService.login(new LoginRequest(emailOrPhone, password));
         return ResponseEntity.ok(response);
     }
 
