@@ -10,31 +10,96 @@ env:
   REGISTRY: ghcr.io
   IMAGE_BASE: ghcr.io/salon-dash/salon-hub
 
+# ─────────────────────────────────────────────
+# Job 1: Detect which services actually changed
+# ─────────────────────────────────────────────
 jobs:
-  build:
+  detect-changes:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+      frontend: ${{ steps.detect.outputs.frontend }}
+      deploy-config: ${{ steps.detect.outputs.deploy-config }}
+      any-change: ${{ steps.detect.outputs.any-change }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: detect
+        run: |
+          # Get list of changed files vs previous commit
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # If parent pom.xml changed, all Java services must rebuild
+          PARENT_POM=$(echo "$CHANGED" | grep -q "^pom\.xml$" && echo true || echo false)
+
+          # Build list of services that need rebuilding
+          SERVICES=()
+          ALL_SVCS=(auth-service booking-service business-service staff-service \
+                    service-catalog-service business-hours-service time-off-service \
+                    notification-service api-gateway eureka-server)
+
+          for svc in "${ALL_SVCS[@]}"; do
+            SVC_CHANGED=$(echo "$CHANGED" | grep -q "^${svc}/" && echo true || echo false)
+            if [ "$SVC_CHANGED" = "true" ] || [ "$PARENT_POM" = "true" ]; then
+              SERVICES+=("$svc")
+            fi
+          done
+
+          # Convert to JSON array
+          if [ ${#SERVICES[@]} -eq 0 ]; then
+            SERVICES_JSON="[]"
+          else
+            SERVICES_JSON=$(printf '%s\n' "${SERVICES[@]}" | jq -R . | jq -sc .)
+          fi
+
+          # Frontend changed?
+          FRONTEND=$(echo "$CHANGED" | grep -q "^salon-hub/" && echo true || echo false)
+
+          # Deploy config only (docker-compose.prod.yml, nginx config, .env.example)
+          DEPLOY_CONFIG=$(echo "$CHANGED" | grep -qE "^docker-compose|^nginx|^\.env" && echo true || echo false)
+
+          # Any change at all
+          ANY=false
+          if [ "$SERVICES_JSON" != "[]" ] || [ "$FRONTEND" = "true" ] || [ "$DEPLOY_CONFIG" = "true" ]; then
+            ANY=true
+          fi
+
+          echo "services=$SERVICES_JSON"     >> $GITHUB_OUTPUT
+          echo "frontend=$FRONTEND"          >> $GITHUB_OUTPUT
+          echo "deploy-config=$DEPLOY_CONFIG" >> $GITHUB_OUTPUT
+          echo "any-change=$ANY"             >> $GITHUB_OUTPUT
+
+          echo "--- Summary ---"
+          echo "Services to rebuild: $SERVICES_JSON"
+          echo "Frontend changed:    $FRONTEND"
+          echo "Deploy config only:  $DEPLOY_CONFIG"
+          echo "Any change:          $ANY"
+
+# ─────────────────────────────────────────────
+# Job 2: Build only changed backend services
+# ─────────────────────────────────────────────
+  build-services:
     name: Build ${{ matrix.service }}
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     strategy:
       matrix:
-        service:
-          - auth-service
-          - booking-service
-          - business-service
-          - staff-service
-          - service-catalog-service
-          - business-hours-service
-          - time-off-service
-          - notification-service
-          - api-gateway
-          - eureka-server
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
       fail-fast: false
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -58,10 +123,15 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # Build React admin dashboard
+# ─────────────────────────────────────────────
+# Job 3: Build admin dashboard only if changed
+# ─────────────────────────────────────────────
   build-frontend:
-    name: Build Admin Dashboard
+    name: Build admin dashboard
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -85,11 +155,21 @@ jobs:
           path: salon-hub/dist/
           retention-days: 1
 
+# ─────────────────────────────────────────────
+# Job 4: Deploy — only if something changed
+# ─────────────────────────────────────────────
   deploy:
     name: Deploy to VPS
-    needs: [build, build-frontend]
+    needs: [detect-changes, build-services, build-frontend]
+    # Run deploy if: any service built, or frontend built, or config-only change
+    # Use always() so we run even if build-services or build-frontend were skipped
+    if: |
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      needs.detect-changes.outputs.any-change == 'true' &&
+      !contains(needs.build-services.result, 'failure') &&
+      !contains(needs.build-frontend.result, 'failure')
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: read
@@ -97,13 +177,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download admin dashboard
+      - name: Download admin dashboard (if rebuilt)
+        if: needs.detect-changes.outputs.frontend == 'true'
         uses: actions/download-artifact@v4
         with:
           name: admin-dashboard-dist
           path: dist/
 
       - name: Copy admin dashboard to VPS
+        if: needs.detect-changes.outputs.frontend == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -121,44 +203,59 @@ jobs:
           source: docker-compose.prod.yml,.env.example
           target: /opt/salon-hub/
 
-      - name: Deploy services on VPS
+      - name: Deploy changed services on VPS
         uses: appleboy/ssh-action@v1.0.3
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
           IMAGE_TAG: ${{ github.sha }}
+          CHANGED_SERVICES: ${{ needs.detect-changes.outputs.services }}
+          ALL_CHANGED: ${{ needs.detect-changes.outputs.any-change }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: GH_TOKEN,GH_ACTOR,IMAGE_TAG
+          envs: GH_TOKEN,GH_ACTOR,IMAGE_TAG,CHANGED_SERVICES
+          command_timeout: 15m
           script: |
             set -e
-
-            # Login to GHCR
             echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
 
             cd /opt/salon-hub
-
-            # Ensure .env exists
             [ -f .env ] || cp .env.example .env
-
-            # Set the image tag
             export IMAGE_TAG=$IMAGE_TAG
 
-            # Pull latest images
-            docker compose -f docker-compose.prod.yml pull
+            # If this is a config-only change, just reload nginx
+            if [ -z "$CHANGED_SERVICES" ] || [ "$CHANGED_SERVICES" = "[]" ]; then
+              echo "Config/frontend only — reloading nginx"
+              systemctl reload nginx 2>/dev/null || true
+              exit 0
+            fi
 
-            # Rolling restart: databases first, then gateway, then services
-            docker compose -f docker-compose.prod.yml up -d postgres redis
-            sleep 10
-            docker compose -f docker-compose.prod.yml up -d eureka-server
-            sleep 15
-            docker compose -f docker-compose.prod.yml up -d api-gateway
-            sleep 5
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            # Pull only images for services that changed
+            echo "Pulling changed services: $CHANGED_SERVICES"
+            echo "$CHANGED_SERVICES" | tr -d '[]"' | tr ',' '\n' | grep -v '^$' | while read svc; do
+              svc=$(echo "$svc" | tr -d ' ')
+              [ -z "$svc" ] && continue
+              echo "Pulling ghcr.io/salon-dash/salon-hub/${svc}:latest"
+              docker pull "ghcr.io/salon-dash/salon-hub/${svc}:latest" || true
+            done
 
-            # Cleanup old images
+            # Restart only changed services (zero-downtime for unchanged ones)
+            echo "$CHANGED_SERVICES" | tr -d '[]"' | tr ',' '\n' | grep -v '^$' | while read svc; do
+              svc=$(echo "$svc" | tr -d ' ')
+              [ -z "$svc" ] && continue
+              # Map service name to compose service name
+              compose_svc=$(echo "$svc" | sed 's/-/_/g')
+              echo "Restarting: $svc"
+              docker compose -f docker-compose.prod.yml up -d --no-deps "$svc" 2>/dev/null || \
+              docker compose -f docker-compose.prod.yml up -d --no-deps "$compose_svc" 2>/dev/null || true
+            done
+
+            # Ensure infra services are up (postgres, redis, eureka, api-gateway)
+            docker compose -f docker-compose.prod.yml up -d postgres redis eureka-server api-gateway
+
+            # Prune old images
             docker image prune -f
 
             echo "=== Deploy complete: $IMAGE_TAG ==="
