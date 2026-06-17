@@ -200,11 +200,24 @@ spring:
                 deny-empty-key: false
                 empty-key-status-code: 429
 
-        # Payment Service — authenticated API limit
+        # Payment Confirmation — routed to booking-service (creates sale + updates appointment)
+        - id: payment-confirmation-booking-service
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/payment-confirmation/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Payment Service (commissions, payments) — authenticated API limit
         - id: payment-service
           uri: lb://payment-service
           predicates:
-            - Path=/api/payments/**, /api/commissions/**, /api/commission-rules/**, /api/payment-confirmation/**
+            - Path=/api/payments/**, /api/commissions/**, /api/commission-rules/**
           filters:
             - name: RequestRateLimiter
               args:

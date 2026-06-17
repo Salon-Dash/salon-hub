@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function ReferralProgramPage() {
   const navigate = useNavigate();
   const businessId = useBusinessId();
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const { getPath } = useNavigation();
   const [loading, setLoading] = useState(true);
   const [referralCode, setReferralCode] = useState<ReferralCode | null>(null);
@@ -58,8 +59,9 @@ export default function ReferralProgramPage() {
         console.log("Referral usages endpoint not available");
       }
     } catch (error: any) {
-      console.error("Failed to load referral data:", error);
-      toast.error(error.message || "Failed to load referral program data");
+      // Referral service may not be deployed yet — suppress toast, show inline notice
+      console.warn("Referral service unavailable:", error?.message || error);
+      setServiceUnavailable(true);
     } finally {
       setLoading(false);
     }
@@ -132,6 +134,21 @@ export default function ReferralProgramPage() {
           </div>
         ) : (
           <>
+            {serviceUnavailable && !referralCode && (
+              <Card className="border-yellow-200 bg-yellow-50">
+                <CardContent className="flex items-center gap-3 p-4">
+                  <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
+                    <Gift className="h-4 w-4 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-yellow-800">Referral Program — Coming Soon</p>
+                    <p className="text-xs text-yellow-700 mt-0.5">
+                      The referral program service is not yet available. This feature will be enabled in a future update.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             {/* Analytics Overview */}
             {analytics && (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
