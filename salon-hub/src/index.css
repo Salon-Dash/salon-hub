@@ -1,0 +1,335 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Salon Booking System Design System
+   Clean, professional SaaS aesthetic inspired by modern booking platforms
+   All colors MUST be HSL
+*/
+
+@layer base {
+  :root {
+    /* Base colors - Clean light theme */
+    --background: 0 0% 98%;
+    --foreground: 220 20% 14%;
+
+    /* Cards & surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 14%;
+
+    /* Primary - Deep slate/navy for professional feel */
+    --primary: 220 18% 22%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Soft neutral */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 20% 14%;
+
+    /* Muted tones */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 46%;
+
+    /* Accent - Soft green for CTAs */
+    --accent: 160 60% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & inputs */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 160 60% 45%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar styling */
+    --sidebar-background: 220 18% 22%;
+    --sidebar-foreground: 220 14% 80%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 220 18% 22%;
+    --sidebar-accent: 220 16% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 16% 30%;
+    --sidebar-ring: 160 60% 45%;
+
+    /* Appointment colors - Pastel rainbow for visual distinction */
+    --appointment-pink: 340 82% 76%;
+    --appointment-yellow: 45 93% 72%;
+    --appointment-blue: 200 80% 75%;
+    --appointment-green: 160 50% 70%;
+    --appointment-coral: 16 85% 75%;
+    --appointment-purple: 270 60% 78%;
+    --appointment-teal: 175 60% 65%;
+    --appointment-orange: 30 90% 70%;
+
+    /* Status colors */
+    --status-completed: 160 60% 45%;
+    --status-pending: 45 93% 55%;
+    --status-cancelled: 0 72% 51%;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(220 20% 14% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(220 20% 14% / 0.08), 0 2px 4px -2px hsl(220 20% 14% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(220 20% 14% / 0.08), 0 4px 6px -4px hsl(220 20% 14% / 0.05);
+  }
+
+  .dark {
+    --background: 220 20% 10%;
+    --foreground: 210 20% 98%;
+
+    --card: 220 18% 14%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 220 18% 14%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 0 0% 100%;
+    --primary-foreground: 220 18% 22%;
+
+    --secondary: 220 16% 20%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 220 16% 20%;
+    --muted-foreground: 220 10% 60%;
+
+    --accent: 160 60% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 16% 22%;
+    --input: 220 16% 22%;
+    --ring: 160 60% 45%;
+
+    --sidebar-background: 220 20% 8%;
+    --sidebar-foreground: 220 14% 80%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 220 18% 22%;
+    --sidebar-accent: 220 16% 16%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 16% 18%;
+    --sidebar-ring: 160 60% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+}
+
+@layer components {
+  /* Appointment block styles */
+  .appointment-block {
+    @apply rounded-lg p-3 transition-all duration-200 cursor-pointer;
+    @apply hover:shadow-md hover:scale-[1.02];
+  }
+
+  .appointment-pink {
+    background-color: hsl(var(--appointment-pink));
+  }
+
+  .appointment-yellow {
+    background-color: hsl(var(--appointment-yellow));
+  }
+
+  .appointment-blue {
+    background-color: hsl(var(--appointment-blue));
+  }
+
+  .appointment-green {
+    background-color: hsl(var(--appointment-green));
+  }
+
+  .appointment-coral {
+    background-color: hsl(var(--appointment-coral));
+  }
+
+  .appointment-purple {
+    background-color: hsl(var(--appointment-purple));
+  }
+
+  .appointment-teal {
+    background-color: hsl(var(--appointment-teal));
+  }
+
+  .appointment-orange {
+    background-color: hsl(var(--appointment-orange));
+  }
+}
+
+@layer utilities {
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .transition-fast {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  /* Glass effect for overlays */
+  .glass {
+    @apply backdrop-blur-md bg-card/80;
+  }
+
+  .glass-strong {
+    @apply backdrop-blur-xl bg-card/90;
+  }
+
+  /* Professional animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 hsl(var(--accent) / 0.4);
+    }
+    50% {
+      opacity: 0.8;
+      box-shadow: 0 0 0 8px hsl(var(--accent) / 0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  .animate-slide-in-up {
+    animation: slideInUp 0.4s ease-out forwards;
+  }
+
+  .animate-slide-in-down {
+    animation: slideInDown 0.4s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+    background: linear-gradient(
+      to right,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted) / 0.5) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 1000px 100%;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Professional hover effects */
+  .hover-lift {
+    @apply transition-all duration-300;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-1 shadow-lg;
+  }
+
+  .hover-glow {
+    @apply transition-all duration-300;
+  }
+
+  .hover-glow:hover {
+    @apply shadow-lg shadow-accent/20;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent to-purple-600;
+  }
+
+  /* Professional card styles */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-xl hover:scale-[1.01] cursor-pointer;
+  }
+
+  .card-interactive {
+    @apply transition-all duration-300 hover:shadow-lg hover:border-accent/30 active:scale-[0.99];
+  }
+}
