@@ -109,6 +109,19 @@ spring:
                 deny-empty-key: false
                 empty-key-status-code: 429
 
+        # Customer mobile app endpoints — authenticated customer routes
+        - id: customer-booking-service
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/customer/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
         # Staff Service — authenticated API limit
         - id: staff-service
           uri: lb://staff-service
@@ -226,9 +239,10 @@ spring:
                 deny-empty-key: false
                 empty-key-status-code: 429
 
-        # Client Service (Public Auth APIs) — tight anti-brute-force limit (5 req/s per IP)
-        - id: client-service-public-auth
-          uri: lb://client-service
+        # Auth Service (Public Auth APIs) — routes /api/public/auth/** to auth-service
+        # Previously pointed to client-service (not deployed) which caused 503.
+        - id: auth-service-public-auth
+          uri: lb://auth-service
           predicates:
             - Path=/api/public/auth/**
           filters:

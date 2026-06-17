@@ -19,4 +19,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     @Query("SELECT a FROM Appointment a WHERE a.staffId = :staffId AND a.appointmentDate = :date AND a.status <> 'CANCELLED'")
     List<Appointment> findActiveByStaffIdAndDate(@Param("staffId") int staffId, @Param("date") LocalDate date);
+
+    List<Appointment> findByClientEmailOrderByAppointmentDateDescStartTimeDesc(String clientEmail);
 }

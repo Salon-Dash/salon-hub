@@ -54,6 +54,9 @@ public class Appointment {
     @Column(name = "client_name")
     private String clientName;
 
+    @Column(name = "client_email")
+    private String clientEmail;
+
     private BigDecimal price;
 
     public Appointment(Long id, int businessId, int staffId, int clientId, int serviceId, LocalDate appointmentDate, LocalTime startTime, LocalTime endTime, String status) {

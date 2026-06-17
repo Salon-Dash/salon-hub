@@ -26,6 +26,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                 // Public booking creation — gateway rewrites /api/public/bookings → /api/bookings
                 .requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
+                // Customer app endpoints require a valid CUSTOMER JWT (handled by JwtAuthFilter)
+                .requestMatchers("/api/customer/**").authenticated()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated()

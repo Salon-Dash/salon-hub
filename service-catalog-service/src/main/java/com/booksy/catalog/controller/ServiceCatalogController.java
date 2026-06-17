@@ -30,6 +30,18 @@ public class ServiceCatalogController {
         return catalogService.getServicesByBusiness(businessId);
     }
 
+    /** GET /api/public/studios/{studioId}/services — customer app public endpoint */
+    @GetMapping("/api/public/studios/{studioId}/services")
+    public List<ServiceDto> getPublicServicesForStudio(@PathVariable Long studioId) {
+        return catalogService.getServicesByBusiness(studioId);
+    }
+
+    /** GET /api/public/salons/{salonId}/services — customer app fallback path */
+    @GetMapping("/api/public/salons/{salonId}/services")
+    public List<ServiceDto> getPublicServicesForSalon(@PathVariable Long salonId) {
+        return catalogService.getServicesByBusiness(salonId);
+    }
+
     @PostMapping("/api/services")
     @ResponseStatus(HttpStatus.CREATED)
     public ServiceDto createService(@RequestBody ServiceCreateRequest request) {
