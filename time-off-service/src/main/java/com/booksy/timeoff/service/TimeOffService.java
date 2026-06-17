@@ -60,6 +60,22 @@ public class TimeOffService {
     }
 
     @Transactional
+    public TimeOffItemDto update(Long id, CreateTimeOffRequest req) {
+        TimeOff t = repository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time-off not found: " + id));
+        if (req.startDate() != null) t.setStartDate(req.startDate());
+        if (req.endDate() != null) t.setEndDate(req.endDate());
+        if (req.startTime() != null) t.setStartTime(req.startTime());
+        if (req.endTime() != null) t.setEndTime(req.endTime());
+        t.setFullDay(req.isFullDay());
+        t.setRecurring(req.isRecurring());
+        if (req.reason() != null) t.setReason(req.reason());
+        if (req.recurrencePattern() != null) t.setRecurrencePattern(req.recurrencePattern());
+        if (req.recurrenceEndDate() != null) t.setRecurrenceEndDate(req.recurrenceEndDate());
+        return toItemDto(repository.save(t));
+    }
+
+    @Transactional
     public TimeOffItemDto approve(Long id, Long approvedBy) {
         TimeOff t = repository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Time-off not found: " + id));

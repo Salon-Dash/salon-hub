@@ -11,4 +11,5 @@ public interface ServiceRepository extends JpaRepository<ServiceEntity, Long> {
     List<ServiceEntity> findByBusinessIdAndIsActiveTrue(Long businessId);
     Optional<ServiceEntity> findByIdAndIsActiveTrue(Long id);
     List<ServiceEntity> findByBusinessIdAndCategoryIdAndIsActiveTrue(Long businessId, Long categoryId);
+    List<ServiceEntity> findByCategoryIdAndIsActiveTrue(Long categoryId);
 }

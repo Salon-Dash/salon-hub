@@ -122,6 +122,19 @@ spring:
                 deny-empty-key: false
                 empty-key-status-code: 429
 
+        # Shifts (staff-level scheduling) — routed to staff-service
+        - id: shifts-service
+          uri: lb://staff-service
+          predicates:
+            - Path=/api/shifts/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
         # Client Service — authenticated API limit
         - id: client-service
           uri: lb://client-service

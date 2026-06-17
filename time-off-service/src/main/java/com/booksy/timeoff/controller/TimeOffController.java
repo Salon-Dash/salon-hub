@@ -53,8 +53,23 @@ public class TimeOffController {
         return timeOffService.create(request);
     }
 
+    @PutMapping("/{id}")
+    public TimeOffItemDto update(
+            @PathVariable Long id,
+            @RequestBody CreateTimeOffRequest request) {
+        return timeOffService.update(id, request);
+    }
+
     @PutMapping("/{id}/approve")
     public TimeOffItemDto approve(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") Long approvedBy) {
+        return timeOffService.approve(id, approvedBy);
+    }
+
+    /** POST /api/time-off/{id}/approve — alias for PUT (frontend compatibility) */
+    @PostMapping("/{id}/approve")
+    public TimeOffItemDto approvePost(
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") Long approvedBy) {
         return timeOffService.approve(id, approvedBy);

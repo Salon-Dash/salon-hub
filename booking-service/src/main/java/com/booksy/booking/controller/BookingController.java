@@ -30,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -259,6 +260,41 @@ public class BookingController {
         }
         publishAppointmentUpdate(updated);
         return updated;
+    }
+
+    @PutMapping("/{bookingId}/confirm")
+    public Appointment confirmBooking(@PathVariable long bookingId) {
+        Appointment existing = findById(bookingId);
+        if (existing == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found: " + bookingId);
+        }
+        jdbcTemplate.update(
+                "UPDATE appointments SET status = ?, updated_at = ? WHERE id = ?",
+                "CONFIRMED",
+                Timestamp.valueOf(LocalDateTime.now()),
+                bookingId
+        );
+        existing.setStatus("CONFIRMED");
+        publishAppointmentUpdate(existing);
+        return existing;
+    }
+
+    @GetMapping("/business/{businessId}/clients")
+    public List<Map<String, Object>> getClientsByBusiness(@PathVariable int businessId) {
+        return jdbcTemplate.queryForList(
+                "SELECT DISTINCT ON (LOWER(COALESCE(client_name, '')), COALESCE(client_phone, ''), COALESCE(client_email, '')) " +
+                "client_id, client_name, client_phone, client_email, " +
+                "COUNT(*) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS total_visits, " +
+                "SUM(price) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS total_spent, " +
+                "MAX(appointment_date) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS last_visit_date, " +
+                "SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS pending_appointments, " +
+                "SUM(CASE WHEN status = 'CONFIRMED' THEN 1 ELSE 0 END) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS confirmed_appointments, " +
+                "SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS completed_appointments, " +
+                "SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END) OVER (PARTITION BY LOWER(COALESCE(client_name, ''))) AS cancelled_appointments " +
+                "FROM appointments WHERE business_id = ? AND client_name IS NOT NULL " +
+                "ORDER BY LOWER(COALESCE(client_name, '')), COALESCE(client_phone, ''), COALESCE(client_email, ''), appointment_date DESC",
+                businessId
+        );
     }
 
     @PutMapping("/{bookingId}/cancel")

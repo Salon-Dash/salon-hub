@@ -124,4 +124,62 @@ public class ServiceCatalogController {
     public void deleteCategory(@PathVariable Long id, @PathVariable Long businessId) {
         catalogService.deleteCategory(id);
     }
+
+    // ── Services by category ──────────────────────────────────────────────────
+
+    /** GET /api/services/category/{categoryId} */
+    @GetMapping("/api/services/category/{categoryId}")
+    public List<ServiceDto> getServicesByCategory(@PathVariable Long categoryId) {
+        return catalogService.getServicesByCategory(categoryId);
+    }
+
+    /** GET /api/services/{serviceId}/combo-items */
+    @GetMapping("/api/services/{serviceId}/combo-items")
+    public List<Map<String, Object>> getComboItems(@PathVariable Long serviceId) {
+        return catalogService.getComboItems(serviceId);
+    }
+
+    // ── Addons ────────────────────────────────────────────────────────────────
+
+    /** GET /api/addons/business/{businessId} */
+    @GetMapping("/api/addons/business/{businessId}")
+    public List<AddonDto> getAddonsByBusiness(@PathVariable Long businessId) {
+        return catalogService.getAddonsByBusiness(businessId);
+    }
+
+    /** POST /api/addons/business/{businessId} */
+    @PostMapping("/api/addons/business/{businessId}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AddonDto createAddon(@PathVariable Long businessId, @RequestBody Map<String, Object> body) {
+        return catalogService.createAddon(businessId, body);
+    }
+
+    /** PUT /api/addons/{id}/business/{businessId} */
+    @PutMapping("/api/addons/{id}/business/{businessId}")
+    public AddonDto updateAddon(@PathVariable Long id, @PathVariable Long businessId,
+                                 @RequestBody Map<String, Object> body) {
+        return catalogService.updateAddon(id, businessId, body);
+    }
+
+    /** DELETE /api/addons/{id}/business/{businessId} */
+    @DeleteMapping("/api/addons/{id}/business/{businessId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAddon(@PathVariable Long id, @PathVariable Long businessId) {
+        catalogService.deleteAddon(id, businessId);
+    }
+
+    // ── Quick Sale ────────────────────────────────────────────────────────────
+
+    /** GET /api/quick-sale/business/{businessId} */
+    @GetMapping("/api/quick-sale/business/{businessId}")
+    public List<QuickSaleItemDto> getQuickSaleItems(@PathVariable Long businessId) {
+        return catalogService.getQuickSaleItems(businessId);
+    }
+
+    /** PUT /api/quick-sale/business/{businessId} — body: array of service IDs */
+    @PutMapping("/api/quick-sale/business/{businessId}")
+    public List<QuickSaleItemDto> updateQuickSaleItems(@PathVariable Long businessId,
+                                                        @RequestBody List<Long> serviceIds) {
+        return catalogService.updateQuickSaleItems(businessId, serviceIds);
+    }
 }

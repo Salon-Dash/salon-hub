@@ -10,8 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,8 @@ public class ServiceCatalogService {
     private final ServiceRepository serviceRepository;
     private final CategoryRepository categoryRepository;
     private final ServiceStaffAssignmentRepository assignmentRepository;
+    private final AddonRepository addonRepository;
+    private final QuickSaleItemRepository quickSaleItemRepository;
 
     public ServiceDto getServiceById(Long id) {
         ServiceEntity s = serviceRepository.findByIdAndIsActiveTrue(id)
@@ -127,6 +131,127 @@ public class ServiceCatalogService {
     @Transactional
     public void deleteCategory(Long id) {
         categoryRepository.deleteById(id);
+    }
+
+    // ── Services by category ──────────────────────────────────────────────────
+
+    public List<ServiceDto> getServicesByCategory(Long categoryId) {
+        return serviceRepository.findByCategoryIdAndIsActiveTrue(categoryId)
+            .stream().map(this::toDto).toList();
+    }
+
+    // ── Combo items (stub — returns staff assignments reused as placeholder) ──
+    // The services table has no combo relationship yet; return an empty list
+    // so the frontend can render without 404.
+    public List<Map<String, Object>> getComboItems(Long serviceId) {
+        return List.of();
+    }
+
+    // ── Addons ────────────────────────────────────────────────────────────────
+
+    public List<AddonDto> getAddonsByBusiness(Long businessId) {
+        return addonRepository.findByBusinessIdAndIsActiveTrue(businessId)
+            .stream().map(this::toAddonDto).toList();
+    }
+
+    @Transactional
+    public AddonDto createAddon(Long businessId, Map<String, Object> body) {
+        Addon addon = new Addon();
+        addon.setBusinessId(businessId);
+        addon.setName((String) body.get("name"));
+        addon.setDescription((String) body.getOrDefault("description", null));
+        if (body.get("price") != null) {
+            addon.setPrice(new BigDecimal(body.get("price").toString()));
+        }
+        if (body.get("priceType") != null) {
+            addon.setPriceType(body.get("priceType").toString());
+        }
+        addon.setColor((String) body.getOrDefault("color", null));
+        addon.setIsActive(true);
+        addon.setIsVisible(true);
+        return toAddonDto(addonRepository.save(addon));
+    }
+
+    @Transactional
+    public AddonDto updateAddon(Long id, Long businessId, Map<String, Object> body) {
+        Addon addon = addonRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Addon not found: " + id));
+        if (body.containsKey("name") && body.get("name") != null) {
+            addon.setName(body.get("name").toString());
+        }
+        if (body.containsKey("description")) {
+            addon.setDescription((String) body.get("description"));
+        }
+        if (body.containsKey("price") && body.get("price") != null) {
+            addon.setPrice(new BigDecimal(body.get("price").toString()));
+        }
+        if (body.containsKey("priceType") && body.get("priceType") != null) {
+            addon.setPriceType(body.get("priceType").toString());
+        }
+        if (body.containsKey("color")) {
+            addon.setColor((String) body.get("color"));
+        }
+        if (body.containsKey("isActive") && body.get("isActive") != null) {
+            addon.setIsActive(Boolean.parseBoolean(body.get("isActive").toString()));
+        }
+        if (body.containsKey("isVisible") && body.get("isVisible") != null) {
+            addon.setIsVisible(Boolean.parseBoolean(body.get("isVisible").toString()));
+        }
+        return toAddonDto(addonRepository.save(addon));
+    }
+
+    @Transactional
+    public void deleteAddon(Long id, Long businessId) {
+        Addon addon = addonRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Addon not found: " + id));
+        addon.setIsActive(false);
+        addonRepository.save(addon);
+    }
+
+    // ── Quick Sale ────────────────────────────────────────────────────────────
+
+    public List<QuickSaleItemDto> getQuickSaleItems(Long businessId) {
+        return quickSaleItemRepository.findByBusinessIdOrderByDisplayOrderAsc(businessId)
+            .stream().map(this::toQuickSaleItemDto).toList();
+    }
+
+    @Transactional
+    public List<QuickSaleItemDto> updateQuickSaleItems(Long businessId, List<Long> serviceIds) {
+        // Replace all quick-sale items for this business
+        quickSaleItemRepository.deleteByBusinessId(businessId);
+        int order = 0;
+        for (Long serviceId : serviceIds) {
+            ServiceEntity svc = serviceRepository.findById(serviceId).orElse(null);
+            if (svc == null) continue;
+            QuickSaleItem item = new QuickSaleItem();
+            item.setBusinessId(businessId);
+            item.setServiceId(serviceId);
+            item.setServiceName(svc.getName());
+            item.setServiceType(svc.getServiceType() != null ? svc.getServiceType().toUpperCase() : "SERVICE");
+            item.setDurationMinutes(svc.getDuration());
+            item.setPrice(svc.getPrice());
+            item.setDisplayOrder(order++);
+            quickSaleItemRepository.save(item);
+        }
+        return quickSaleItemRepository.findByBusinessIdOrderByDisplayOrderAsc(businessId)
+            .stream().map(this::toQuickSaleItemDto).toList();
+    }
+
+    // ── DTO helpers ───────────────────────────────────────────────────────────
+
+    private AddonDto toAddonDto(Addon a) {
+        return new AddonDto(
+            a.getId(), a.getBusinessId(), a.getName(), a.getDescription(),
+            a.getPrice(), a.getPriceType(), a.getColor(), a.getIsActive(), a.getIsVisible()
+        );
+    }
+
+    private QuickSaleItemDto toQuickSaleItemDto(QuickSaleItem q) {
+        return new QuickSaleItemDto(
+            q.getId(), q.getBusinessId(), q.getServiceId(), q.getServiceName(),
+            q.getServiceType(), q.getDurationMinutes(), q.getPrice(), q.getPriceType(),
+            q.getColor(), q.getDisplayOrder()
+        );
     }
 
     private ServiceDto toDto(ServiceEntity s) {
