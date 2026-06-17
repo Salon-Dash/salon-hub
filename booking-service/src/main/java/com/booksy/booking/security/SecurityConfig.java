@@ -24,6 +24,8 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+                // Public booking creation — gateway rewrites /api/public/bookings → /api/bookings
+                .requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated()
