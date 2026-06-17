@@ -2,6 +2,8 @@ server:
   port: 8761
 
 spring:
+  flyway:
+    table: flyway_history_eureka_server
   application:
     name: eureka-server
 

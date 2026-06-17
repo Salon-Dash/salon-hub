@@ -29,6 +29,7 @@ spring:
         order_inserts: true
         order_updates: true
   flyway:
+    table: flyway_history_business_hours_service
     enabled: true
     locations: classpath:db/migration
   cache:

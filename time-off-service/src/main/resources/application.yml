@@ -6,6 +6,8 @@ server:
     min-response-size: 1024
 
 spring:
+  flyway:
+    table: flyway_history_time_off_service
   application:
     name: time-off-service
   datasource:

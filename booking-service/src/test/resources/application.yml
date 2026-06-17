@@ -5,6 +5,7 @@ eureka:
     fetch-registry: false
 spring:
   flyway:
+    table: flyway_history_booking_service
     enabled: true
   jpa:
     hibernate:
