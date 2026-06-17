@@ -1,0 +1,62 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/booksy_platform}
+    username: ${SPRING_DATASOURCE_USERNAME:booksy}
+    password: ${SPRING_DATASOURCE_PASSWORD:booksy_dev}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false  # Disable to prevent connection leaks and improve performance
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 2000ms
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+    healthcheck:
+      enabled: true
+    initial-instance-info-replication-interval-seconds: 5
+    instance-info-replication-interval-seconds: 10
+  instance:
+    prefer-ip-address: true
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:auth-service}
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+    health-check-url-path: /actuator/health
+    status-page-url-path: /actuator/info
+    instance-id: ${spring.application.name}:${server.port}
+
+jwt:
+  # WARNING: JWT_SECRET MUST be overridden in production via environment variable. Never use this default outside local dev.
+  secret: ${JWT_SECRET:local-dev-only-secret-change-in-prod!!}
+  expiration: ${JWT_EXPIRATION_MS:86400000}         # 24 hours in ms
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION_MS:2592000000}  # 30 days in ms
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+

@@ -1,0 +1,235 @@
+version: '3.9'
+
+x-image-base: &image-base ghcr.io/salon-dash/salon-hub
+
+x-common-env: &common-env
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/booksy_platform
+  SPRING_DATASOURCE_USERNAME: ${DB_USER:-booksy}
+  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+  SPRING_DATA_REDIS_HOST: redis
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+  JWT_SECRET: ${JWT_SECRET}
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-healthcheck-spring: &healthcheck-spring
+  healthcheck:
+    test: ["CMD-SHELL", "curl -sf http://localhost:${SERVER_PORT:-8080}/actuator/health || exit 1"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 60s
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    <<: *restart
+    environment:
+      POSTGRES_DB: booksy_platform
+      POSTGRES_USER: ${DB_USER:-booksy}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-booksy} -d booksy_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  redis:
+    image: redis:7-alpine
+    <<: *restart
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  eureka-server:
+    image: *image-base/eureka-server:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    environment:
+      SERVER_PORT: 8761
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  api-gateway:
+    image: *image-base/api-gateway:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8080
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 320m
+
+  auth-service:
+    image: *image-base/auth-service:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 320m
+
+  booking-service:
+    image: *image-base/booking-service:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8084
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
+      SERVICES_NOTIFICATION_URL: http://notification-service:8090
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  business-service:
+    image: *image-base/business-service:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 320m
+
+  staff-service:
+    image: *image-base/staff-service:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8086
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  service-catalog-service:
+    image: *image-base/service-catalog-service:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8087
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  business-hours-service:
+    image: *image-base/business-hours-service:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8088
+      SPRING_CACHE_TYPE: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  time-off-service:
+    image: *image-base/time-off-service:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8089
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  notification-service:
+    image: *image-base/notification-service:${IMAGE_TAG:-latest}
+    <<: [*restart, *healthcheck-spring]
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8090
+      NOTIFICATION_EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      NOTIFICATION_FROM_EMAIL: ${FROM_EMAIL:-noreply@salon-hub.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: salon-hub-net

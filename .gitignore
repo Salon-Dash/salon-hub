@@ -1,0 +1,50 @@
+# Maven
+target/
+*.jar
+*.war
+*.class
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Node
+node_modules/
+dist/
+.next/
+.cache/
+*.tsbuildinfo
+
+# Expo / React Native
+.expo/
+ios/
+android/
+*.keystore
+
+# Environment — NEVER commit secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Logs
+*.log
+logs/
+
+# Docker
+.docker/
+
+# Spring Boot DevTools
+spring-devtools.properties
+
+# IntelliJ
+out/

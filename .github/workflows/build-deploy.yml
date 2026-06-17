@@ -1,0 +1,165 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BASE: ghcr.io/salon-dash/salon-hub
+
+jobs:
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service:
+          - auth-service
+          - booking-service
+          - business-service
+          - staff-service
+          - service-catalog-service
+          - business-hours-service
+          - time-off-service
+          - notification-service
+          - api-gateway
+          - eureka-server
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.service }}/Dockerfile
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.IMAGE_BASE }}/${{ matrix.service }}:latest
+            ${{ env.IMAGE_BASE }}/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # Build React admin dashboard
+  build-frontend:
+    name: Build Admin Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: salon-hub/package-lock.json
+
+      - name: Install & build
+        working-directory: salon-hub
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-dashboard-dist
+          path: salon-hub/dist/
+          retention-days: 1
+
+  deploy:
+    name: Deploy to VPS
+    needs: [build, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download admin dashboard
+        uses: actions/download-artifact@v4
+        with:
+          name: admin-dashboard-dist
+          path: dist/
+
+      - name: Copy admin dashboard to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: dist/
+          target: /var/www/salon-hub/
+
+      - name: Copy docker-compose to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: docker-compose.prod.yml,.env.example
+          target: /opt/salon-hub/
+
+      - name: Deploy services on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+          IMAGE_TAG: ${{ github.sha }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: GH_TOKEN,GH_ACTOR,IMAGE_TAG
+          script: |
+            set -e
+
+            # Login to GHCR
+            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+
+            cd /opt/salon-hub
+
+            # Ensure .env exists
+            [ -f .env ] || cp .env.example .env
+
+            # Set the image tag
+            export IMAGE_TAG=$IMAGE_TAG
+
+            # Pull latest images
+            docker compose -f docker-compose.prod.yml pull
+
+            # Rolling restart: databases first, then gateway, then services
+            docker compose -f docker-compose.prod.yml up -d postgres redis
+            sleep 10
+            docker compose -f docker-compose.prod.yml up -d eureka-server
+            sleep 15
+            docker compose -f docker-compose.prod.yml up -d api-gateway
+            sleep 5
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Cleanup old images
+            docker image prune -f
+
+            echo "=== Deploy complete: $IMAGE_TAG ==="
+            docker compose -f docker-compose.prod.yml ps

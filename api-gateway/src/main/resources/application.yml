@@ -1,0 +1,399 @@
+server:
+  port: ${PORT:8080}
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+  http2:
+    enabled: true
+  netty:
+    connection-timeout: 20000
+    idle-timeout: 60s
+  threads:
+    accept: 1
+    select: 2
+
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: 2s
+      timeout: 2s
+  cloud:
+    gateway:
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 10000
+        pool:
+          type: ELASTIC
+          max-connections: 500
+          max-idle-time: 30s
+          max-life-time: 60s
+          evict-in-background: true
+          eviction-interval: 10s
+      websocket:
+        max-frame-payload-length: 65536
+        proxy-ping: true
+      default-filters:
+        - name: Retry
+          args:
+            retries: 1
+            statuses: BAD_GATEWAY,GATEWAY_TIMEOUT,SERVICE_UNAVAILABLE
+            methods: GET
+            backoff:
+              firstBackoff: 50ms
+              maxBackoff: 500ms
+              factor: 2
+              basedOnPreviousValue: false
+      routes:
+        # Authentication Service — tight anti-brute-force limit (5 req/s per IP)
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,GATEWAY_TIMEOUT,SERVICE_UNAVAILABLE
+                methods: GET
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@authRateLimiter}"
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Salon Onboarding Service — authenticated API limit (60 req/s per user)
+        - id: salon-onboarding-service
+          uri: lb://salon-onboarding-service
+          predicates:
+            - Path=/api/salons/register, /api/salons/{id}/profile, /api/salons/{id}/setup, /api/salons/{id}
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Availability Service — authenticated API limit
+        - id: availability-service
+          uri: lb://availability-service
+          predicates:
+            - Path=/api/availability/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Booking Service — authenticated API limit
+        - id: booking-service
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/bookings/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Staff Service — authenticated API limit
+        - id: staff-service
+          uri: lb://staff-service
+          predicates:
+            - Path=/api/staff/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Client Service — authenticated API limit
+        - id: client-service
+          uri: lb://client-service
+          predicates:
+            - Path=/api/clients/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Service Catalog Service — authenticated API limit
+        - id: service-catalog-service
+          uri: lb://service-catalog-service
+          predicates:
+            - Path=/api/services/**, /api/categories/**, /api/addons/**, /api/quick-sale/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Business Hours Service — authenticated API limit
+        - id: business-hours-service
+          uri: lb://business-hours-service
+          predicates:
+            - Path=/api/business-hours/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Time Off Service — authenticated API limit
+        - id: time-off-service
+          uri: lb://time-off-service
+          predicates:
+            - Path=/api/time-off/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Sales Service — authenticated API limit
+        - id: sales-service
+          uri: lb://sales-service
+          predicates:
+            - Path=/api/sales/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Payment Service — authenticated API limit
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**, /api/commissions/**, /api/commission-rules/**, /api/payment-confirmation/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Client Service (Public Auth APIs) — tight anti-brute-force limit (5 req/s per IP)
+        - id: client-service-public-auth
+          uri: lb://client-service
+          predicates:
+            - Path=/api/public/auth/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@authRateLimiter}"
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Booking Service (Public Availability APIs - must come before general studios route)
+        - id: booking-service-public-availability
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/public/studios/*/services/*/availability, /api/public/studios/*/staff/*/available-slots
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@publicRateLimiter}"
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Business Service (Public Studio APIs) — public limit (20 req/s per IP)
+        - id: business-service-public-studios
+          uri: lb://business-service
+          predicates:
+            - Path=/api/public/studios, /api/public/studios/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@publicRateLimiter}"
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Booking Service (Public Booking APIs) — public limit
+        - id: booking-service-public-bookings
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/public/bookings, /api/public/bookings/**
+          filters:
+            # Use $\{segment} so Spring does not treat ${segment} as a property placeholder.
+            - RewritePath=/api/public/bookings(?<segment>.*), /api/bookings$\{segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@publicRateLimiter}"
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Staff Service (Public Staff APIs) — public limit
+        - id: staff-service-public-staff
+          uri: lb://staff-service
+          predicates:
+            - Path=/api/public/studios/*/staff/**, /api/public/studios/*/services/*/staff
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@publicRateLimiter}"
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Appointments - routed to booking-service (rewrite path from /appointments to /bookings)
+        - id: appointments-service
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/appointments/**
+          filters:
+            - RewritePath=/api/appointments(?<segment>.*), /api/bookings$\{segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # WebSocket - routed to booking-service (handles WebSocket connections)
+        # Spring Cloud Gateway supports WebSocket with load balancers
+        # Rate limiting is intentionally omitted for WebSocket upgrade requests
+        - id: websocket-booking-service
+          uri: lb://booking-service
+          predicates:
+            - Path=/ws/**
+          filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+
+        # Business Service — authenticated API limit
+        - id: business-service
+          uri: lb://business-service
+          predicates:
+            - Path=/api/businesses/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Referral Service — authenticated API limit
+        - id: referral-service
+          uri: lb://referral-service
+          predicates:
+            - Path=/api/referrals/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Invitation Service — authenticated API limit
+        - id: invitation-service
+          uri: lb://invitation-service
+          predicates:
+            - Path=/api/invitations/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Notification Service — authenticated API limit
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
+        # Analysis Service — authenticated API limit
+        - id: analysis-service
+          uri: lb://analysis-service
+          predicates:
+            - Path=/api/analytics/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@apiRateLimiter}"
+                key-resolver: "#{@userKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: 
+              - "http://localhost:5173"
+              - "http://localhost:3000"
+              - "https://salon-hub-omega.vercel.app"
+              - "https://*.vercel.app"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - PATCH
+            allowedHeaders: "Content-Type,Authorization,X-Requested-With"
+            allowCredentials: true
+            maxAge: 3600
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://eureka:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+    healthcheck:
+      enabled: true
+    initial-instance-info-replication-interval-seconds: 5
+    instance-info-replication-interval-seconds: 10
+  instance:
+    prefer-ip-address: true
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:api-gateway}
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+    health-check-url-path: /actuator/health
+    status-page-url-path: /actuator/info
+    instance-id: ${spring.application.name}:${server.port}
+
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.booksy: INFO
