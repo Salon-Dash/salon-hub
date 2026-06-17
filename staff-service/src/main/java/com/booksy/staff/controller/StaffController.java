@@ -51,21 +51,39 @@ public class StaffController {
         return ResponseEntity.ok(staffService.getAllByBusiness(businessId));
     }
 
-    /**
-     * POST /api/staff
-     * Create a new staff member with optional working hours schedule.
-     */
+    /** GET /api/staff/{id}/business/{businessId} — dashboard pattern */
+    @GetMapping("/{id}/business/{businessId}")
+    public ResponseEntity<StaffDto> getStaffByIdAndBusiness(@PathVariable Long id,
+                                                              @PathVariable Long businessId) {
+        return ResponseEntity.ok(staffService.getById(id));
+    }
+
+    /** GET /api/staff/{staffId}/working-hours — returns working hours for a staff member */
+    @GetMapping("/{staffId}/working-hours")
+    public ResponseEntity<?> getWorkingHours(@PathVariable Long staffId) {
+        StaffDto staff = staffService.getById(staffId);
+        return ResponseEntity.ok(staff.getWorkingHoursStart() != null
+                ? java.util.Map.of("workingHoursStart", staff.getWorkingHoursStart(),
+                                   "workingHoursEnd", staff.getWorkingHoursEnd())
+                : java.util.Map.of());
+    }
+
+    /** POST /api/staff — create staff (businessId in request body) */
     @PostMapping
     public ResponseEntity<StaffDto> createStaff(@RequestBody StaffCreateRequest request) {
         log.info("POST /api/staff name='{}'", request.name());
-        StaffDto created = staffService.create(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        return ResponseEntity.status(HttpStatus.CREATED).body(staffService.create(request));
     }
 
-    /**
-     * PUT /api/staff/{id}
-     * Update an existing staff member and replace their schedule.
-     */
+    /** POST /api/staff/business/{businessId} — dashboard pattern */
+    @PostMapping("/business/{businessId}")
+    public ResponseEntity<StaffDto> createStaffForBusiness(@PathVariable Long businessId,
+                                                             @RequestBody StaffCreateRequest request) {
+        log.info("POST /api/staff/business/{} name='{}'", businessId, request.name());
+        return ResponseEntity.status(HttpStatus.CREATED).body(staffService.create(request));
+    }
+
+    /** PUT /api/staff/{id} — update staff */
     @PutMapping("/{id}")
     public ResponseEntity<StaffDto> updateStaff(@PathVariable Long id,
                                                  @RequestBody StaffCreateRequest request) {
@@ -73,13 +91,28 @@ public class StaffController {
         return ResponseEntity.ok(staffService.update(id, request));
     }
 
-    /**
-     * DELETE /api/staff/{id}
-     * Soft-delete (deactivate) a staff member.
-     */
+    /** PUT /api/staff/{id}/business/{businessId} — dashboard pattern */
+    @PutMapping("/{id}/business/{businessId}")
+    public ResponseEntity<StaffDto> updateStaffForBusiness(@PathVariable Long id,
+                                                             @PathVariable Long businessId,
+                                                             @RequestBody StaffCreateRequest request) {
+        log.info("PUT /api/staff/{}/business/{}", id, businessId);
+        return ResponseEntity.ok(staffService.update(id, request));
+    }
+
+    /** DELETE /api/staff/{id} — soft-delete */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivateStaff(@PathVariable Long id) {
         log.info("DELETE /api/staff/{}", id);
+        staffService.deactivate(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** DELETE /api/staff/{id}/business/{businessId} — dashboard pattern */
+    @DeleteMapping("/{id}/business/{businessId}")
+    public ResponseEntity<Void> deactivateStaffForBusiness(@PathVariable Long id,
+                                                             @PathVariable Long businessId) {
+        log.info("DELETE /api/staff/{}/business/{}", id, businessId);
         staffService.deactivate(id);
         return ResponseEntity.noContent().build();
     }

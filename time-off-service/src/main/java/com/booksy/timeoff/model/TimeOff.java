@@ -16,7 +16,7 @@ public class TimeOff {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "business_id", nullable = false)
+    @Column(name = "business_id")
     private Long businessId;
 
     @Column(name = "staff_id", nullable = false)
