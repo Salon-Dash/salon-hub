@@ -135,6 +135,15 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    // Dashboard calls POST /api/auth/validate — support both methods
+    @PostMapping("/api/auth/validate")
+    public ResponseEntity<ValidateResponse> validatePost(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        log.info("POST /api/auth/validate");
+        ValidateResponse response = authService.validate(authHeader);
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * POST /api/auth/logout
      * Revokes the given refresh token.
