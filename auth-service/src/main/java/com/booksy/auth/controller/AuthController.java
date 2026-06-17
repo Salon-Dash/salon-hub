@@ -73,6 +73,27 @@ public class AuthController {
     // -------------------------------------------------------------------------
 
     /**
+     * POST /api/auth/register/business
+     * Business owner registration — called by the admin dashboard on the sign-up page.
+     * Permitted without a JWT (whitelisted in SecurityConfig).
+     * Forces role to BUSINESS_OWNER regardless of request body.
+     */
+    @PostMapping("/api/auth/register/business")
+    public ResponseEntity<AuthResponse> registerBusiness(@Valid @RequestBody RegisterRequest request) {
+        log.info("POST /api/auth/register/business — email [{}]", request.email());
+        RegisterRequest ownerRequest = new RegisterRequest(
+                request.firstName(),
+                request.lastName(),
+                request.email(),
+                request.password(),
+                request.phone(),
+                "BUSINESS_OWNER"
+        );
+        AuthResponse response = authService.register(ownerRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
      * POST /api/auth/refresh
      * Exchanges a valid refresh token for a new access token (with refresh token rotation).
      * Returns 200 OK, 401 Unauthorized if the refresh token is unknown or expired.

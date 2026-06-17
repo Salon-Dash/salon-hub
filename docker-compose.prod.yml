@@ -243,6 +243,7 @@ services:
       <<: *common-env
       SERVER_PORT: 8090
       SPRING_FLYWAY_TABLE: flyway_history_notification
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
       NOTIFICATION_EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
