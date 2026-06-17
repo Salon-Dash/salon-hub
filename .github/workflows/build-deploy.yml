@@ -253,6 +253,17 @@ jobs:
             done
 
             # Ensure infra services are up — always use 'latest' (they may not have been rebuilt)
+            # Force-remove any containers started outside compose (e.g. manual 'docker run')
+            # to prevent "container name already in use" conflicts
+            for infra in api-gateway eureka-server; do
+              if docker ps -a --format "{{.Names}}" | grep -q "^salon-hub-${infra}-1$"; then
+                MANAGED=$(docker inspect "salon-hub-${infra}-1" --format "{{index .Config.Labels \"com.docker.compose.project\"}}" 2>/dev/null)
+                if [ -z "$MANAGED" ]; then
+                  echo "Removing unmanaged container: salon-hub-${infra}-1"
+                  docker rm -f "salon-hub-${infra}-1" || true
+                fi
+              fi
+            done
             IMAGE_TAG=latest docker compose -f docker-compose.prod.yml up -d postgres redis eureka-server api-gateway
 
             # Prune old images
