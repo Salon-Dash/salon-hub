@@ -13,11 +13,7 @@ RUN mvn install -N -B || true
 # Copy service POM
 COPY referral-service/pom.xml ./referral-service/pom.xml
 
-# Copy all service POMs for dependency resolution
-COPY */pom.xml ./
 
-# Install all parent POMs (in case of multi-level hierarchy)
-RUN mvn install -N -B -f pom.xml || true
 
 # Download dependencies (cached layer)
 RUN mvn dependency:go-offline -f referral-service/pom.xml -B || true

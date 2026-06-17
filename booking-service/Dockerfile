@@ -13,11 +13,7 @@ RUN mvn install -N -B || true
 # Copy service POM
 COPY booking-service/pom.xml ./booking-service/pom.xml
 
-# Copy all service POMs for dependency resolution
-COPY */pom.xml ./
 
-# Install all parent POMs (in case of multi-level hierarchy)
-RUN mvn install -N -B -f pom.xml || true
 
 # Download dependencies (cached layer)
 RUN mvn dependency:go-offline -f booking-service/pom.xml -B || true
