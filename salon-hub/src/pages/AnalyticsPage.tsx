@@ -167,10 +167,23 @@ export default function AnalyticsPage() {
     fetchData();
   }, [businessId, period, activeTab]);
 
+  const tabDataMap: Record<string, unknown> = {
+    overview, revenue, bookings, clients, services,
+    performance, cancellations, "peak-hours": peakHours,
+    "customer-retention": customerRetention, profitability,
+    "payment-methods": paymentMethods, seasonal,
+    "service-duration": serviceDuration, "wait-times": waitTimes,
+    "lead-time": leadTime, "revenue-per-hour": revenuePerHour,
+    acquisition, bundles, forecast,
+    staff: overview?.staffPerformance,
+  };
+
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    // Reset loading when switching tabs to fetch new data
-    setLoading(true);
+    // Only show loading spinner if this tab's data is not yet cached
+    if (!tabDataMap[value]) {
+      setLoading(true);
+    }
   };
 
   if (loading && !overview && !revenue && !bookings && !clients && !services) {

@@ -133,9 +133,10 @@ export default function StaffPage() {
     totalPending, 
     loading: commissionsLoading 
   } = useCommissions({ staffId: selectedStaffIdForCommissions });
-  const { 
-    rules: commissionRules, 
+  const {
+    rules: commissionRules,
     loading: rulesLoading,
+    error: rulesError,
     createRule: createCommissionRule,
     updateRule: updateCommissionRule,
     deleteRule: deleteCommissionRule,
@@ -1586,6 +1587,17 @@ export default function StaffPage() {
                 {rulesLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="animate-spin text-gray-400" size={24} />
+                  </div>
+                ) : rulesError ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+                    <p className="text-sm font-medium text-red-600">Commission settings unavailable</p>
+                    <p className="text-xs text-gray-400">The commission service is not reachable right now.</p>
+                    <button
+                      onClick={refreshCommissionRules}
+                      className="mt-2 text-xs text-blue-600 underline hover:text-blue-800"
+                    >
+                      Retry
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-0 border border-gray-200 rounded-lg overflow-hidden">

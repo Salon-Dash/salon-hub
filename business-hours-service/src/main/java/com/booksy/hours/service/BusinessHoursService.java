@@ -38,6 +38,10 @@ public class BusinessHoursService {
     @Transactional(readOnly = true)
     public List<BusinessHoursItemDto> getByBusiness(Long businessId) {
         List<BusinessHours> hours = repository.findByBusinessId(businessId);
+        if (hours.isEmpty()) {
+            // Auto-initialize Mon–Sat open, Sun closed for new businesses
+            return initializeDefaults(businessId);
+        }
         return hours.stream().map(this::toItemDto).collect(Collectors.toList());
     }
 
