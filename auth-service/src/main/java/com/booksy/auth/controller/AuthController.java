@@ -85,8 +85,15 @@ public class AuthController {
             return ResponseEntity.badRequest().build();
         }
         log.info("POST /api/auth/login (alias) — [{}]", emailOrPhone);
-        AuthResponse response = authService.login(new LoginRequest(emailOrPhone, password));
-        return ResponseEntity.ok(response);
+        try {
+            AuthResponse response = authService.login(new LoginRequest(emailOrPhone, password));
+            return ResponseEntity.ok(response);
+        } catch (org.springframework.web.server.ResponseStatusException ex) {
+            // Re-throw with explicit status so Spring Security doesn't convert 401→403
+            return ResponseEntity.status(ex.getStatusCode()).build();
+        } catch (Exception ex) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     /**
