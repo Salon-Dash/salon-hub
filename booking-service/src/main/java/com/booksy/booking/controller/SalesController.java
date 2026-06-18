@@ -216,17 +216,13 @@ public class SalesController {
             for (Map<String, Object> item : items) {
                 double unitPrice = toDouble(item.get("unitPrice"));
                 int qty = Math.max(1, toInt(item.get("quantity")));
-                try {
-                    jdbc.update(
-                            "INSERT INTO sale_items (sale_id, service_id, service_name, service_type, quantity, unit_price, total_price, duration, notes) " +
-                            "VALUES (?,?,?,?,?,?,?,?,?)",
-                            saleId, toIntOrNull(item.get("serviceId")),
-                            item.get("serviceName"), item.getOrDefault("serviceType", "SERVICE"),
-                            qty, unitPrice, unitPrice * qty,
-                            item.get("duration"), item.get("notes"));
-                } catch (Exception ignored) {
-                    // item insert failure is non-fatal
-                }
+                jdbc.update(
+                        "INSERT INTO sale_items (sale_id, service_id, service_name, service_type, quantity, unit_price, total_price, duration, notes) " +
+                        "VALUES (?,?,?,?,?,?,?,?,?)",
+                        saleId, toIntOrNull(item.get("serviceId")),
+                        item.get("serviceName"), item.getOrDefault("serviceType", "SERVICE"),
+                        qty, unitPrice, unitPrice * qty,
+                        item.get("duration"), item.get("notes"));
             }
         }
 

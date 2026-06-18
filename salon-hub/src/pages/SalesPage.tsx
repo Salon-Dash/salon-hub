@@ -137,6 +137,7 @@ export default function SalesPage() {
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
+  const [selectedAppointmentStaffId, setSelectedAppointmentStaffId] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [serviceSearchQuery, setServiceSearchQuery] = useState("");
@@ -593,7 +594,7 @@ export default function SalesPage() {
         orderItems={orderItems}
         subtotal={calculateTotal()}
         selectedClient={selectedClient ? { id: "", name: selectedClient } : null}
-        selectedStaff={staff && staff.length > 0 ? staff[0] : null}
+        selectedStaff={staff?.find(s => s.id === selectedAppointmentStaffId) ?? (staff && staff.length > 0 ? staff[0] : null)}
         onConfirm={async (paymentData) => {
           try {
             // Map payment method from PaymentMethodPage format to backend format
@@ -624,8 +625,8 @@ export default function SalesPage() {
             // Calculate subtotal
             const subtotal = calculateTotal();
 
-            // Get selected staff ID
-            const staffId = staff && staff.length > 0 ? staff[0].id : undefined;
+            // Get selected staff ID — prefer the appointment's staff, fall back to first in list
+            const staffId = selectedAppointmentStaffId ?? (staff && staff.length > 0 ? staff[0].id : undefined);
 
             // Create payment confirmation request
             const confirmationRequest: PaymentConfirmationRequest = {
@@ -653,6 +654,7 @@ export default function SalesPage() {
             setBasket([]);
             setSelectedClient(null);
             setSelectedAppointmentId(null);
+            setSelectedAppointmentStaffId(null);
           } catch (error: any) {
             console.error('Failed to process payment:', error);
             toast.error(error.message || 'Failed to process payment. Please try again.');
@@ -1048,6 +1050,7 @@ export default function SalesPage() {
                               addToBasket(serviceItem);
                               setSelectedClient(appointment.clientName || null);
                               setSelectedAppointmentId(appointment.id);
+                              setSelectedAppointmentStaffId(appointment.staffId || null);
                             }}
                           >
                             <div className="p-3.5">

@@ -82,12 +82,13 @@ public class AnalyticsController {
                 "GROUP BY service_id, service_name ORDER BY bookings DESC LIMIT 10",
                 businessId, start, end);
 
-        // Top staff
+        // Top staff — JOIN staff table for real names; fall back to ID string if staff row is missing
         List<Map<String, Object>> topStaff = jdbc.queryForList(
-                "SELECT staff_id AS \"staffId\", CAST(staff_id AS TEXT) AS \"staffName\", " +
-                "COUNT(*) AS bookings, COALESCE(SUM(price),0) AS revenue, 0 AS growth, COALESCE(AVG(price),0) AS \"averageTicket\" " +
-                "FROM appointments WHERE business_id = ? AND appointment_date BETWEEN ? AND ? AND status != 'CANCELLED' AND staff_id > 0 " +
-                "GROUP BY staff_id ORDER BY bookings DESC LIMIT 10",
+                "SELECT a.staff_id AS \"staffId\", COALESCE(s.name, CAST(a.staff_id AS TEXT)) AS \"staffName\", " +
+                "COUNT(*) AS bookings, COALESCE(SUM(a.price),0) AS revenue, 0 AS growth, COALESCE(AVG(a.price),0) AS \"averageTicket\" " +
+                "FROM appointments a LEFT JOIN staff s ON s.id = a.staff_id " +
+                "WHERE a.business_id = ? AND a.appointment_date BETWEEN ? AND ? AND a.status != 'CANCELLED' AND a.staff_id > 0 " +
+                "GROUP BY a.staff_id, s.name ORDER BY bookings DESC LIMIT 10",
                 businessId, start, end);
 
         Map<String, Object> result = new LinkedHashMap<>();
