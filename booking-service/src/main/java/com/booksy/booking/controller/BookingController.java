@@ -38,6 +38,11 @@ public class BookingController {
     private final SimpMessagingTemplate messagingTemplate;
     private final JdbcTemplate jdbcTemplate;
     private final NotificationClient notificationClient;
+    private static final String APPOINTMENT_SELECT =
+        "SELECT id, business_id, staff_id, COALESCE(client_id, 0) AS client_id, service_id, " +
+        "appointment_date, start_time, end_time, status, payment_status, " +
+        "service_name, client_name, client_email, client_phone, price, color, notes";
+
     private final RowMapper<Appointment> appointmentRowMapper = new RowMapper<>() {
         @Override
         public Appointment mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -51,9 +56,14 @@ public class BookingController {
             appointment.setStartTime(rs.getTime("start_time").toLocalTime());
             appointment.setEndTime(rs.getTime("end_time").toLocalTime());
             appointment.setStatus(rs.getString("status"));
+            appointment.setPaymentStatus(rs.getString("payment_status"));
             appointment.setServiceName(rs.getString("service_name"));
             appointment.setClientName(rs.getString("client_name"));
+            appointment.setClientEmail(rs.getString("client_email"));
+            appointment.setClientPhone(rs.getString("client_phone"));
             appointment.setPrice(rs.getBigDecimal("price"));
+            appointment.setColor(rs.getString("color"));
+            appointment.setNotes(rs.getString("notes"));
             return appointment;
         }
     };
@@ -75,21 +85,13 @@ public class BookingController {
         LocalDate rangeEnd = date != null ? date : endDate;
         if (rangeStart != null && rangeEnd != null) {
             return jdbcTemplate.query(
-                    "SELECT id, business_id, staff_id, COALESCE(client_id, 0) AS client_id, service_id, appointment_date, start_time, end_time, status " +
-                            ", service_name, client_name, price " +
-                            "FROM appointments WHERE business_id = ? AND appointment_date BETWEEN ? AND ? ORDER BY appointment_date ASC, start_time ASC",
-                    appointmentRowMapper,
-                    businessId,
-                    rangeStart,
-                    rangeEnd
+                    APPOINTMENT_SELECT + " FROM appointments WHERE business_id = ? AND appointment_date BETWEEN ? AND ? ORDER BY appointment_date ASC, start_time ASC",
+                    appointmentRowMapper, businessId, rangeStart, rangeEnd
             );
         }
         return jdbcTemplate.query(
-                "SELECT id, business_id, staff_id, COALESCE(client_id, 0) AS client_id, service_id, appointment_date, start_time, end_time, status " +
-                        ", service_name, client_name, price " +
-                        "FROM appointments WHERE business_id = ? ORDER BY appointment_date ASC, start_time ASC",
-                appointmentRowMapper,
-                businessId
+                APPOINTMENT_SELECT + " FROM appointments WHERE business_id = ? ORDER BY appointment_date ASC, start_time ASC",
+                appointmentRowMapper, businessId
         );
     }
 
@@ -103,21 +105,13 @@ public class BookingController {
         LocalDate rangeEnd = date != null ? date : endDate;
         if (rangeStart != null && rangeEnd != null) {
             return jdbcTemplate.query(
-                    "SELECT id, business_id, staff_id, COALESCE(client_id, 0) AS client_id, service_id, appointment_date, start_time, end_time, status " +
-                            ", service_name, client_name, price " +
-                            "FROM appointments WHERE staff_id = ? AND appointment_date BETWEEN ? AND ? ORDER BY appointment_date ASC, start_time ASC",
-                    appointmentRowMapper,
-                    staffId,
-                    rangeStart,
-                    rangeEnd
+                    APPOINTMENT_SELECT + " FROM appointments WHERE staff_id = ? AND appointment_date BETWEEN ? AND ? ORDER BY appointment_date ASC, start_time ASC",
+                    appointmentRowMapper, staffId, rangeStart, rangeEnd
             );
         }
         return jdbcTemplate.query(
-                "SELECT id, business_id, staff_id, COALESCE(client_id, 0) AS client_id, service_id, appointment_date, start_time, end_time, status " +
-                        ", service_name, client_name, price " +
-                        "FROM appointments WHERE staff_id = ? ORDER BY appointment_date ASC, start_time ASC",
-                appointmentRowMapper,
-                staffId
+                APPOINTMENT_SELECT + " FROM appointments WHERE staff_id = ? ORDER BY appointment_date ASC, start_time ASC",
+                appointmentRowMapper, staffId
         );
     }
 
@@ -128,9 +122,7 @@ public class BookingController {
             @RequestParam(required = false) LocalDate date,
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate) {
-        StringBuilder sql = new StringBuilder(
-                "SELECT id, business_id, staff_id, COALESCE(client_id, 0) AS client_id, service_id, appointment_date, start_time, end_time, status, service_name, client_name, price FROM appointments WHERE 1=1"
-        );
+        StringBuilder sql = new StringBuilder(APPOINTMENT_SELECT + " FROM appointments WHERE 1=1");
         new Object() {
             final java.util.List<Object> params = new java.util.ArrayList<>();
         };
@@ -398,9 +390,8 @@ public class BookingController {
 
     private Appointment findById(long bookingId) {
         List<Appointment> matches = jdbcTemplate.query(
-                "SELECT id, business_id, staff_id, COALESCE(client_id, 0) AS client_id, service_id, appointment_date, start_time, end_time, status, service_name, client_name, price FROM appointments WHERE id = ?",
-                appointmentRowMapper,
-                bookingId
+                APPOINTMENT_SELECT + " FROM appointments WHERE id = ?",
+                appointmentRowMapper, bookingId
         );
         return matches.isEmpty() ? null : matches.get(0);
     }

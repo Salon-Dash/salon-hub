@@ -43,7 +43,8 @@ jobs:
           SERVICES=()
           ALL_SVCS=(auth-service booking-service business-service staff-service \
                     service-catalog-service business-hours-service time-off-service \
-                    notification-service api-gateway eureka-server)
+                    notification-service api-gateway eureka-server \
+                    payment-service invitation-service referral-service)
 
           for svc in "${ALL_SVCS[@]}"; do
             SVC_CHANGED=$(echo "$CHANGED" | grep -q "^${svc}/" && echo true || echo false)

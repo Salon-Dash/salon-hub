@@ -167,6 +167,7 @@ services:
       <<: *common-env
       SERVER_PORT: 8086
       SPRING_FLYWAY_TABLE: flyway_history_staff
+      JAVA_TOOL_OPTIONS: "-Xmx160m -Xms64m"
     depends_on:
       postgres:
         condition: service_healthy
@@ -178,7 +179,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256m
+          memory: 320m
 
   service-catalog-service:
     image: ghcr.io/salon-dash/salon-hub/service-catalog-service:${IMAGE_TAG:-latest}
@@ -262,6 +263,66 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8090/actuator/health > /dev/null || exit 1"]
+      <<: *spring-healthcheck
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  payment-service:
+    image: ghcr.io/salon-dash/salon-hub/payment-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8095
+      SPRING_FLYWAY_TABLE: flyway_history_payment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8095/actuator/health > /dev/null || exit 1"]
+      <<: *spring-healthcheck
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  invitation-service:
+    image: ghcr.io/salon-dash/salon-hub/invitation-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8091
+      SPRING_FLYWAY_TABLE: flyway_history_invitation
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8091/actuator/health > /dev/null || exit 1"]
+      <<: *spring-healthcheck
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  referral-service:
+    image: ghcr.io/salon-dash/salon-hub/referral-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      SERVER_PORT: 8092
+      SPRING_FLYWAY_TABLE: flyway_history_referral
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8092/actuator/health > /dev/null || exit 1"]
       <<: *spring-healthcheck
     deploy:
       resources:

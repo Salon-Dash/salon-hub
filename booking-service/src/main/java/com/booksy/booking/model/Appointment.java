@@ -57,6 +57,16 @@ public class Appointment {
     @Column(name = "client_email")
     private String clientEmail;
 
+    @Column(name = "client_phone")
+    private String clientPhone;
+
+    @Column(name = "payment_status")
+    private String paymentStatus;
+
+    private String color;
+
+    private String notes;
+
     private BigDecimal price;
 
     public Appointment(Long id, int businessId, int staffId, int clientId, int serviceId, LocalDate appointmentDate, LocalTime startTime, LocalTime endTime, String status) {
@@ -83,6 +93,11 @@ public class Appointment {
     public void setStatus(String status) { this.status = status; }
     public void setServiceName(String serviceName) { this.serviceName = serviceName; }
     public void setClientName(String clientName) { this.clientName = clientName; }
+    public void setClientEmail(String clientEmail) { this.clientEmail = clientEmail; }
+    public void setClientPhone(String clientPhone) { this.clientPhone = clientPhone; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+    public void setColor(String color) { this.color = color; }
+    public void setNotes(String notes) { this.notes = notes; }
     public void setPrice(BigDecimal price) { this.price = price; }
 
     public Long getId() { return id; }
@@ -104,5 +119,10 @@ public class Appointment {
     }
     public String getServiceName() { return serviceName; }
     public String getClientName() { return clientName; }
+    public String getClientEmail() { return clientEmail; }
+    public String getClientPhone() { return clientPhone; }
+    public String getPaymentStatus() { return paymentStatus; }
+    public String getColor() { return color; }
+    public String getNotes() { return notes; }
     public BigDecimal getPrice() { return price; }
 }
