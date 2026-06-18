@@ -22,6 +22,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { appointmentService } from "@/services/appointmentService";
 import { useServices } from "@/hooks/useServices";
 import { useAppointments } from "@/hooks/useAppointments";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<ClientWithStats[]>([]);
@@ -31,6 +37,9 @@ export default function ClientsPage() {
   const [invitationDialogOpen, setInvitationDialogOpen] = useState(false);
   const [addClientDialogOpen, setAddClientDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientWithStats | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [clientDetailOpen, setClientDetailOpen] = useState(false);
+  const [detailClient, setDetailClient] = useState<ClientWithStats | null>(null);
   const [newClientForm, setNewClientForm] = useState({
     firstName: "",
     lastName: "",
@@ -221,9 +230,13 @@ export default function ClientsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button 
-            variant="outline" 
-            className="gap-2 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all"
+          <Button
+            variant="outline"
+            className={`gap-2 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all ${showFilters ? "bg-accent/10 border-accent/40" : ""}`}
+            onClick={() => {
+              setShowFilters(f => !f);
+              if (!showFilters) toast.info("Filters coming soon — use the search box for now");
+            }}
           >
             <Filter size={16} />
             Filters
@@ -455,13 +468,31 @@ export default function ClientsPage() {
                                 Invite
                               </Button>
                             )}
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              className="h-8 w-8 hover:bg-accent/10 hover:text-accent transition-all"
-                            >
-                              <MoreHorizontal size={16} />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 hover:bg-accent/10 hover:text-accent transition-all"
+                                >
+                                  <MoreHorizontal size={16} />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { setDetailClient(client); setClientDetailOpen(true); }}>
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setDetailClient(client); setClientDetailOpen(true); }}>
+                                  View Appointments
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-red-600 focus:text-red-600"
+                                  onClick={() => toast.info("Client deletion coming soon")}
+                                >
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </td>
                       </tr>
@@ -767,6 +798,30 @@ export default function ClientsPage() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client Detail Dialog */}
+      <Dialog open={clientDetailOpen} onOpenChange={setClientDetailOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Client Details</DialogTitle>
+            <DialogDescription>
+              {detailClient ? getFullName(detailClient.firstName, detailClient.lastName) : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {detailClient && (
+            <div className="space-y-3 py-2">
+              <div className="flex gap-2 text-sm"><span className="font-medium w-28">Email:</span><span>{detailClient.email || "N/A"}</span></div>
+              <div className="flex gap-2 text-sm"><span className="font-medium w-28">Phone:</span><span>{detailClient.phone || "N/A"}</span></div>
+              <div className="flex gap-2 text-sm"><span className="font-medium w-28">Status:</span><span>{detailClient.status || "Active"}</span></div>
+              <div className="flex gap-2 text-sm"><span className="font-medium w-28">Total Visits:</span><span>{detailClient.totalVisits ?? 0}</span></div>
+              <div className="flex gap-2 text-sm"><span className="font-medium w-28">Total Spent:</span><span>{formatCurrency(detailClient.totalSpent)}</span></div>
+              <div className="flex gap-2 text-sm"><span className="font-medium w-28">Last Visit:</span><span>{formatDate(detailClient.lastVisitDate)}</span></div>
+              <div className="flex gap-2 text-sm"><span className="font-medium w-28">Completed:</span><span>{detailClient.completedAppointments ?? 0}</span></div>
+              <div className="flex gap-2 text-sm"><span className="font-medium w-28">Cancelled:</span><span>{detailClient.cancelledAppointments ?? 0}</span></div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </AppLayout>

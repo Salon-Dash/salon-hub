@@ -3,55 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, DollarSign, Users, TrendingUp, Clock, Star, Building2, Bell } from "lucide-react";
+import { Calendar, DollarSign, Users, TrendingUp, Clock, Star, Building2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getUserBusinesses, isBusinessOwner } from "@/utils/businessUtils";
 import { businessService } from "@/services/businessService";
-import { getAccessToken } from "@/utils/authUtils";
 import { toast } from "sonner";
-
-const stats = [
-  {
-    title: "Today's Bookings",
-    value: "24",
-    change: "+3 from yesterday",
-    icon: Calendar,
-    color: "text-appointment-blue",
-    bgColor: "bg-appointment-blue/10",
-  },
-  {
-    title: "Revenue Today",
-    value: "£1,420",
-    change: "+12% from avg",
-    icon: DollarSign,
-    color: "text-status-completed",
-    bgColor: "bg-status-completed/10",
-  },
-  {
-    title: "Active Clients",
-    value: "847",
-    change: "+23 this week",
-    icon: Users,
-    color: "text-appointment-purple",
-    bgColor: "bg-appointment-purple/10",
-  },
-  {
-    title: "Avg Rating",
-    value: "4.8",
-    change: "128 reviews",
-    icon: Star,
-    color: "text-appointment-yellow",
-    bgColor: "bg-appointment-yellow/10",
-  },
-];
-
-const upcomingAppointments = [
-  { time: "9:00 AM", client: "Sarah Johnson", service: "Hair Cut & Color", staff: "Maria" },
-  { time: "9:30 AM", client: "Michael Brown", service: "Beard Trim", staff: "John" },
-  { time: "10:00 AM", client: "Emily Davis", service: "Manicure", staff: "Wendy" },
-  { time: "10:30 AM", client: "James Wilson", service: "Swedish Massage", staff: "Amy" },
-];
+import { analysisService, type AnalyticsOverview } from "@/services/analysisService";
+import { appointmentService, type Appointment } from "@/services/appointmentService";
+import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HomePage() {
   const { businessId } = useParams<{ businessId?: string }>();
@@ -62,38 +23,34 @@ export default function HomePage() {
   const [newBizName, setNewBizName] = useState("");
   const [creatingBiz, setCreatingBiz] = useState(false);
 
-  const playNotificationPreview = () => {
-    const playFallbackBeep = () => {
+  // Real dashboard data
+  const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
+  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  const numericBusinessId = businessId ? parseInt(businessId, 10) : null;
+
+  // Fetch real dashboard stats when on a business route
+  useEffect(() => {
+    if (!numericBusinessId) return;
+    const fetchDashboardData = async () => {
+      setStatsLoading(true);
       try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioCtx) return;
-        const context = new AudioCtx();
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-        oscillator.type = "triangle";
-        oscillator.frequency.setValueAtTime(950, context.currentTime);
-        gainNode.gain.setValueAtTime(0.0001, context.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.2, context.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.4);
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.start();
-        oscillator.stop(context.currentTime + 0.4);
+        const today = format(new Date(), "yyyy-MM-dd");
+        const [overviewData, appts] = await Promise.all([
+          analysisService.getAnalyticsOverview(numericBusinessId, today, today),
+          appointmentService.getAppointmentsByBusiness(numericBusinessId, new Date()),
+        ]);
+        setOverview(overviewData);
+        setTodayAppointments(appts.slice(0, 4));
       } catch {
-        // Ignore fallback sound failures in preview.
+        // Non-critical — dashboard still renders without stats
+      } finally {
+        setStatsLoading(false);
       }
     };
-
-    const audio = new Audio("/sounds/manager-booking-alert.mp3");
-    audio.preload = "auto";
-    audio.currentTime = 0;
-    audio.play()
-      .then(() => toast.success("Notification sound played"))
-      .catch(() => {
-        playFallbackBeep();
-        toast.success("Fallback notification beep played");
-      });
-  };
+    fetchDashboardData();
+  }, [numericBusinessId]);
 
   useEffect(() => {
     const loadBusinesses = async () => {
@@ -191,8 +148,43 @@ export default function HomePage() {
     );
   }
 
-  // If we're on a business-specific route, show the regular dashboard
+  // If we're on a business-specific route, show the real dashboard
   if (businessId) {
+    const liveStats = [
+      {
+        title: "Today's Bookings",
+        value: statsLoading ? null : (overview?.totalBookings ?? todayAppointments.length).toString(),
+        change: overview ? `${overview.bookingsChange >= 0 ? "+" : ""}${overview.bookingsChange}% from avg` : "No data yet",
+        icon: Calendar,
+        color: "text-appointment-blue",
+        bgColor: "bg-appointment-blue/10",
+      },
+      {
+        title: "Revenue Today",
+        value: statsLoading ? null : overview ? overview.totalRevenue.toFixed(2) : "0.00",
+        change: overview ? `${overview.revenueChange >= 0 ? "+" : ""}${overview.revenueChange}% from avg` : "No revenue yet",
+        icon: DollarSign,
+        color: "text-status-completed",
+        bgColor: "bg-status-completed/10",
+      },
+      {
+        title: "New Clients",
+        value: statsLoading ? null : overview ? overview.newClients.toString() : "0",
+        change: overview ? `${overview.newClientsChange >= 0 ? "+" : ""}${overview.newClientsChange}% from avg` : "No clients yet",
+        icon: Users,
+        color: "text-appointment-purple",
+        bgColor: "bg-appointment-purple/10",
+      },
+      {
+        title: "Avg Ticket",
+        value: statsLoading ? null : overview ? overview.averageTicket.toFixed(2) : "0.00",
+        change: overview ? `${overview.averageTicketChange >= 0 ? "+" : ""}${overview.averageTicketChange}% from avg` : "No data yet",
+        icon: Star,
+        color: "text-appointment-yellow",
+        bgColor: "bg-appointment-yellow/10",
+      },
+    ];
+
     return (
       <AppLayout>
         <PageHeader
@@ -208,13 +200,13 @@ export default function HomePage() {
         />
 
       <div className="p-6 space-y-6">
-        {/* Enhanced Stats Grid */}
+        {/* Stats Grid */}
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, index) => {
+          {liveStats.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <Card 
-                key={stat.title} 
+              <Card
+                key={stat.title}
                 className="border-border/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br from-card to-card/95 backdrop-blur-sm group"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
@@ -227,7 +219,11 @@ export default function HomePage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-foreground mb-1">{stat.value}</div>
+                  {stat.value === null ? (
+                    <Skeleton className="h-9 w-16 mb-1" />
+                  ) : (
+                    <div className="text-3xl font-bold text-foreground mb-1">{stat.value}</div>
+                  )}
                   <p className="text-xs text-muted-foreground font-medium">{stat.change}</p>
                 </CardContent>
               </Card>
@@ -235,15 +231,15 @@ export default function HomePage() {
           })}
         </div>
 
-        {/* Enhanced Main Content Grid */}
+        {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Upcoming Appointments - Enhanced */}
+          {/* Upcoming Appointments */}
           <Card className="border-border/60 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-br from-card to-card/95 backdrop-blur-sm">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg font-bold">Upcoming Appointments</CardTitle>
-                  <CardDescription className="mt-1">Next 4 appointments for today</CardDescription>
+                  <CardDescription className="mt-1">Next appointments for today</CardDescription>
                 </div>
                 <div className="p-2.5 rounded-xl bg-accent/10">
                   <Clock className="h-5 w-5 text-accent" />
@@ -251,29 +247,37 @@ export default function HomePage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {upcomingAppointments.map((apt, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10 hover:from-muted/50 hover:to-muted/20 transition-all duration-300 border border-border/30 hover:border-accent/30 hover:shadow-sm group"
-                  >
-                    <div className="text-sm font-bold text-foreground w-20 bg-accent/10 px-2.5 py-1.5 rounded-lg text-center group-hover:bg-accent/20 transition-colors">
-                      {apt.time}
+              {statsLoading ? (
+                <div className="space-y-3">
+                  {[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
+                </div>
+              ) : todayAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No appointments scheduled for today.</p>
+              ) : (
+                <div className="space-y-3">
+                  {todayAppointments.map((apt) => (
+                    <div
+                      key={apt.id}
+                      className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10 hover:from-muted/50 hover:to-muted/20 transition-all duration-300 border border-border/30 hover:border-accent/30 hover:shadow-sm group"
+                    >
+                      <div className="text-sm font-bold text-foreground w-20 bg-accent/10 px-2.5 py-1.5 rounded-lg text-center group-hover:bg-accent/20 transition-colors">
+                        {apt.startTime}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-foreground truncate">{apt.clientName || "Walk-in"}</p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{apt.serviceName}</p>
+                      </div>
+                      <div className="text-sm font-medium text-muted-foreground bg-background/50 px-3 py-1.5 rounded-lg">
+                        {apt.staffName || "Staff"}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-foreground truncate">{apt.client}</p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{apt.service}</p>
-                    </div>
-                    <div className="text-sm font-medium text-muted-foreground bg-background/50 px-3 py-1.5 rounded-lg">
-                      {apt.staff}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Quick Actions - Enhanced */}
+          {/* Quick Actions */}
           <Card className="border-border/60 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-br from-card to-card/95 backdrop-blur-sm">
             <CardHeader className="pb-4">
               <div>
@@ -283,50 +287,42 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
-                <Link to={businessId ? `/${businessId}/calendar` : "/calendar"}>
-                  <Button 
-                    variant="outline" 
+                <Link to={`/${businessId}/calendar`}>
+                  <Button
+                    variant="outline"
                     className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
                   >
                     <Calendar className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
                     <span className="font-semibold text-sm">New Booking</span>
                   </Button>
                 </Link>
-                <Link to={businessId ? `/${businessId}/clients` : "/clients"}>
-                  <Button 
-                    variant="outline" 
+                <Link to={`/${businessId}/clients`}>
+                  <Button
+                    variant="outline"
                     className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
                   >
                     <Users className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
                     <span className="font-semibold text-sm">Add Client</span>
                   </Button>
                 </Link>
-                <Link to={businessId ? `/${businessId}/sales` : "/sales"}>
-                  <Button 
-                    variant="outline" 
+                <Link to={`/${businessId}/sales`}>
+                  <Button
+                    variant="outline"
                     className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
                   >
                     <DollarSign className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
                     <span className="font-semibold text-sm">Quick Sale</span>
                   </Button>
                 </Link>
-                <Link to={businessId ? `/${businessId}/analytics` : "/analytics"}>
-                  <Button 
-                    variant="outline" 
+                <Link to={`/${businessId}/analytics`}>
+                  <Button
+                    variant="outline"
                     className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
                   >
                     <TrendingUp className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
                     <span className="font-semibold text-sm">View Reports</span>
                   </Button>
                 </Link>
-                <Button
-                  variant="outline"
-                  onClick={playNotificationPreview}
-                  className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
-                >
-                  <Bell className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
-                  <span className="font-semibold text-sm">Test Sound</span>
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -405,131 +401,41 @@ export default function HomePage() {
           </Link>
         }
       />
-
-      <div className="p-6 space-y-6">
-        {/* Enhanced Stats Grid */}
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <Card 
-                key={stat.title} 
-                className="border-border/60 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02] bg-gradient-to-br from-card to-card/95 backdrop-blur-sm group"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    {stat.title}
-                  </CardTitle>
-                  <div className={`p-2.5 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
-                    <Icon className={`h-5 w-5 ${stat.color}`} />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-foreground mb-1">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground font-medium">{stat.change}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Enhanced Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Upcoming Appointments - Enhanced */}
-          <Card className="border-border/60 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-br from-card to-card/95 backdrop-blur-sm">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg font-bold">Upcoming Appointments</CardTitle>
-                  <CardDescription className="mt-1">Next 4 appointments for today</CardDescription>
-                </div>
-                <div className="p-2.5 rounded-xl bg-accent/10">
-                  <Clock className="h-5 w-5 text-accent" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {upcomingAppointments.map((apt, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10 hover:from-muted/50 hover:to-muted/20 transition-all duration-300 border border-border/30 hover:border-accent/30 hover:shadow-sm group"
-                  >
-                    <div className="text-sm font-bold text-foreground w-20 bg-accent/10 px-2.5 py-1.5 rounded-lg text-center group-hover:bg-accent/20 transition-colors">
-                      {apt.time}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-foreground truncate">{apt.client}</p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{apt.service}</p>
-                    </div>
-                    <div className="text-sm font-medium text-muted-foreground bg-background/50 px-3 py-1.5 rounded-lg">
-                      {apt.staff}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions - Enhanced */}
-          <Card className="border-border/60 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-br from-card to-card/95 backdrop-blur-sm">
-            <CardHeader className="pb-4">
-              <div>
-                <CardTitle className="text-lg font-bold">Quick Actions</CardTitle>
-                <CardDescription className="mt-1">Common tasks and shortcuts</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Link to="/calendar">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
-                  >
-                    <Calendar className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
-                    <span className="font-semibold text-sm">New Booking</span>
-                  </Button>
-                </Link>
-                <Link to="/clients">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
-                  >
-                    <Users className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
-                    <span className="font-semibold text-sm">Add Client</span>
-                  </Button>
-                </Link>
-                <Link to="/sales">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
-                  >
-                    <DollarSign className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
-                    <span className="font-semibold text-sm">Quick Sale</span>
-                  </Button>
-                </Link>
-                <Link to="/analytics">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
-                  >
-                    <TrendingUp className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
-                    <span className="font-semibold text-sm">View Reports</span>
-                  </Button>
-                </Link>
-                <Button
-                  variant="outline"
-                  onClick={playNotificationPreview}
-                  className="w-full h-auto py-5 flex flex-col gap-2.5 border-border/60 hover:border-accent/30 hover:bg-accent/5 transition-all duration-300 group"
-                >
-                  <Bell className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
-                  <span className="font-semibold text-sm">Test Sound</span>
+      <div className="p-6">
+        <Card className="border-border/60 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Quick Actions</CardTitle>
+            <CardDescription>Common tasks and shortcuts</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Link to="/calendar">
+                <Button variant="outline" className="w-full h-auto py-5 flex flex-col gap-2.5 group">
+                  <Calendar className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
+                  <span className="font-semibold text-sm">New Booking</span>
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </Link>
+              <Link to="/clients">
+                <Button variant="outline" className="w-full h-auto py-5 flex flex-col gap-2.5 group">
+                  <Users className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
+                  <span className="font-semibold text-sm">Add Client</span>
+                </Button>
+              </Link>
+              <Link to="/sales">
+                <Button variant="outline" className="w-full h-auto py-5 flex flex-col gap-2.5 group">
+                  <DollarSign className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
+                  <span className="font-semibold text-sm">Quick Sale</span>
+                </Button>
+              </Link>
+              <Link to="/analytics">
+                <Button variant="outline" className="w-full h-auto py-5 flex flex-col gap-2.5 group">
+                  <TrendingUp className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
+                  <span className="font-semibold text-sm">View Reports</span>
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );

@@ -78,6 +78,29 @@ export default function AnalyticsPage() {
     return { startDate, endDate };
   };
 
+  // Reset all cached data when period changes so guards allow re-fetching
+  useEffect(() => {
+    setOverview(null);
+    setRevenue(null);
+    setBookings(null);
+    setClients(null);
+    setServices(null);
+    setPerformance(null);
+    setCancellations(null);
+    setPeakHours(null);
+    setCustomerRetention(null);
+    setProfitability(null);
+    setPaymentMethods(null);
+    setSeasonal(null);
+    setServiceDuration(null);
+    setWaitTimes(null);
+    setLeadTime(null);
+    setRevenuePerHour(null);
+    setAcquisition(null);
+    setBundles(null);
+    setForecast(null);
+  }, [period]);
+
   useEffect(() => {
     if (!businessId) return;
 

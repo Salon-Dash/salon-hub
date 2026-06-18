@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 function formatMoney(value?: number) {
   if (typeof value !== "number") return "Price not set";
-  return `${value.toFixed(2)} CZK`;
+  return value.toFixed(2);
 }
 
 function formatDuration(minutes?: number) {
@@ -343,16 +343,10 @@ export default function BusinessPage() {
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Reviews</h3>
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="relative mb-4">
-                      <MessageSquare size={48} className="text-gray-300" />
-                      <MessageSquare size={48} className="text-gray-300 absolute top-2 left-2 opacity-60" />
-                    </div>
-                    <p className="text-sm text-gray-600 max-w-md">
-                      No reviews yet. Encourage clients to leave their first review.
-                    </p>
-                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Reviews</h3>
+                  <p className="text-sm text-gray-500">
+                    Reviews are coming soon. Once clients leave reviews from their booking confirmation page, they will appear here.
+                  </p>
                 </div>
 
                 {error ? (

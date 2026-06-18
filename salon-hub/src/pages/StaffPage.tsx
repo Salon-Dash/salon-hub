@@ -246,23 +246,16 @@ export default function StaffPage() {
   // Initialize working hours form when staff is selected
   useEffect(() => {
     if (selectedStaff) {
-      console.log("Initializing working hours for staff:", selectedStaff.name, selectedStaff.id);
-      console.log("workingHoursDetail:", selectedStaff.workingHoursDetail);
       const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
       const hours: Record<string, { start: string; end: string; isClosed: boolean }> = {};
-      
+
       // Use working hours from backend if available, otherwise use defaults
       if (selectedStaff.workingHoursDetail) {
         days.forEach(day => {
           const dayHours = selectedStaff.workingHoursDetail?.[day];
-          console.log(`Processing ${day}:`, dayHours);
           if (dayHours) {
-            // Explicitly check if isClosed is true
-            // Also check if start/end are null which indicates closed
-            // Check if closed - handle boolean true or null start/end times
-            const isClosed = dayHours.isClosed === true || 
+            const isClosed = dayHours.isClosed === true ||
                            (dayHours.start === null && dayHours.end === null);
-            console.log(`${day} - isClosed:`, isClosed, "start:", dayHours.start, "end:", dayHours.end);
             hours[day] = {
               start: dayHours.start || "10:00",
               end: dayHours.end || "19:00",
@@ -274,13 +267,11 @@ export default function StaffPage() {
         });
       } else {
         // Default hours if no data from backend
-        console.log("No workingHoursDetail found, using defaults");
         days.forEach(day => {
           hours[day] = { start: "10:00", end: "19:00", isClosed: false };
         });
       }
-      
-      console.log("Setting working hours form:", hours);
+
       setWorkingHoursForm(hours);
     } else {
       setWorkingHoursForm({});
@@ -467,7 +458,6 @@ export default function StaffPage() {
       await refreshServices();
       toast.success("Services updated successfully");
     } catch (error: any) {
-      console.error("Failed to save services:", error);
       toast.error(error.message || "Failed to save services");
     }
   };
@@ -477,17 +467,11 @@ export default function StaffPage() {
     if (!selectedStaff) return;
 
     try {
-      console.log("Saving working hours:", JSON.stringify(workingHoursForm, null, 2));
       const requestData = {
         workingHours: workingHoursForm,
       };
-      console.log("Request data being sent:", JSON.stringify(requestData, null, 2));
-      const updated = await updateStaff(selectedStaff.id, requestData);
-      console.log("Updated staff from API:", updated);
-      console.log("Updated staff workingHoursDetail:", updated?.workingHoursDetail);
-      // Refresh staff list to get updated working hours
+      await updateStaff(selectedStaff.id, requestData);
       await refreshStaff();
-      // Force re-selection of the staff to trigger useEffect
       const currentId = selectedStaffId;
       setSelectedStaffId(null);
       setTimeout(() => {
@@ -495,7 +479,6 @@ export default function StaffPage() {
       }, 100);
       toast.success("Working hours updated successfully");
     } catch (error: any) {
-      console.error("Failed to save working hours:", error);
       toast.error(error.message || "Failed to save working hours");
     }
   };
@@ -634,36 +617,10 @@ export default function StaffPage() {
       
       const isInRange = currentDate >= startDate && currentDate <= endDate;
       
-      // Debug logging
-      if (to.staffId === staffId) {
-        console.log(`Checking time off ${to.id} for staff ${staffId}:`, {
-          currentDate: dateStr,
-          startDate: format(startDate, "yyyy-MM-dd"),
-          endDate: format(endDate, "yyyy-MM-dd"),
-          isInRange
-        });
-      }
-      
       return isInRange;
     });
-    if (filtered.length > 0) {
-      console.log(`✓ Found ${filtered.length} time off(s) for staff ${staffId} on ${dateStr}:`, filtered);
-    } else {
-      console.log(`✗ No time offs found for staff ${staffId} on ${dateStr}`);
-    }
     return filtered;
   };
-
-  // Debug: Log time offs when they change
-  useEffect(() => {
-    if (timeOffs && timeOffs.length > 0) {
-      console.log("Time offs loaded in StaffPage:", timeOffs);
-    } else {
-      console.log("No time offs loaded in StaffPage");
-    }
-  }, [timeOffs]);
-
-  const isClosed = format(selectedDate, "EEE, d MMM") === "Sat, 27 Dec";
 
   return (
     <AppLayout>
@@ -998,7 +955,28 @@ export default function StaffPage() {
                     <Calendar size={16} />
                     Add Time Off
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      // Copy the selected day's hours to all staff working hour entries for that day
+                      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                      const dayOfWeek = dayNames[selectedDate.getDay()];
+                      const sourceHours = workingHoursForm[dayOfWeek];
+                      if (!sourceHours) {
+                        toast.info("No hours set for the selected day");
+                        return;
+                      }
+                      const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+                      const updated = { ...workingHoursForm };
+                      days.forEach(day => {
+                        updated[day] = { ...sourceHours };
+                      });
+                      setWorkingHoursForm(updated);
+                      toast.success(`Copied ${dayOfWeek} schedule to all days`);
+                    }}
+                  >
                     <Copy size={16} />
                     Copy Schedule
                   </Button>
@@ -1493,18 +1471,6 @@ export default function StaffPage() {
                       >
                         Not categorized
                       </button>
-                      <button
-                        onClick={() =>
-                          setSelectedCommissionCategory("services-tesst")
-                        }
-                        className={`w-full text-left px-4 py-3 text-sm rounded-lg transition-colors ${
-                          selectedCommissionCategory === "services-tesst"
-                            ? "bg-white text-gray-900 shadow-sm"
-                            : "text-gray-600 hover:bg-gray-100"
-                        }`}
-                      >
-                        tesst
-                      </button>
                     </div>
                   )}
 
@@ -1689,13 +1655,6 @@ export default function StaffPage() {
                                 const ruleToEdit = selectedStaffIdForCommissions 
                                   ? categoryRules.find(r => r.staffId === selectedStaffIdForCommissions && !r.serviceId)
                                   : defaultRule;
-                                
-                                console.log("Clicking commission value:", {
-                                  selectedStaffer,
-                                  selectedStaffIdForCommissions,
-                                  ruleToEdit,
-                                  allCategoryRules: categoryRules
-                                });
                                 
                                 setEditingCommissionRule(ruleToEdit || null);
                                 setCommissionRuleForm({
@@ -2605,7 +2564,6 @@ export default function StaffPage() {
                     isApproved: false,
                   });
                 } catch (error: any) {
-                  console.error("Error creating time off:", error);
                   toast.error(error?.message || "Failed to create time off");
                 }
               }}
@@ -2716,12 +2674,6 @@ export default function StaffPage() {
                 value={commissionRuleForm.staffId ? commissionRuleForm.staffId.toString() : "all"}
                 onValueChange={(value) => {
                   const newStaffId = value === "all" ? undefined : parseInt(value);
-                  console.log("Dialog staff selection changed:", { 
-                    value, 
-                    newStaffId, 
-                    previousStaffId: commissionRuleForm.staffId,
-                    selectedStafferFromMain: selectedStaffer 
-                  });
                   setCommissionRuleForm(prev => ({ 
                     ...prev, 
                     staffId: newStaffId,
@@ -2839,14 +2791,6 @@ export default function StaffPage() {
                     } else {
                       ruleData.staffId = null; // Explicitly set to null for "all staff"
                     }
-                    
-                    console.log("Creating/updating commission rule:", {
-                      ruleData,
-                      formStaffId: commissionRuleForm.staffId,
-                      selectedStaffer: selectedStaffer,
-                      selectedStaffIdForCommissions: selectedStaffIdForCommissions,
-                      isEditing: !!editingCommissionRule
-                    });
                     
                     if (editingCommissionRule) {
                       await updateCommissionRule(editingCommissionRule.id!, ruleData);
@@ -3063,7 +3007,6 @@ export default function StaffPage() {
                       setIsEditStaffDialogOpen(false);
                       refreshStaff();
                     } catch (error: any) {
-                      console.error("Error updating staff:", error);
                       toast.error(error?.message || "Failed to update staff member");
                     }
                   }}

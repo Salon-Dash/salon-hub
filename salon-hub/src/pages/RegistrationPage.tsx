@@ -597,9 +597,36 @@ const RegistrationPage = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="+48">+48</SelectItem>
-                          <SelectItem value="+1">+1</SelectItem>
-                          <SelectItem value="+44">+44</SelectItem>
+                          <SelectItem value="+1">+1 (US/CA)</SelectItem>
+                          <SelectItem value="+7">+7 (RU/KZ)</SelectItem>
+                          <SelectItem value="+31">+31 (NL)</SelectItem>
+                          <SelectItem value="+32">+32 (BE)</SelectItem>
+                          <SelectItem value="+33">+33 (FR)</SelectItem>
+                          <SelectItem value="+34">+34 (ES)</SelectItem>
+                          <SelectItem value="+36">+36 (HU)</SelectItem>
+                          <SelectItem value="+39">+39 (IT)</SelectItem>
+                          <SelectItem value="+41">+41 (CH)</SelectItem>
+                          <SelectItem value="+43">+43 (AT)</SelectItem>
+                          <SelectItem value="+44">+44 (UK)</SelectItem>
+                          <SelectItem value="+45">+45 (DK)</SelectItem>
+                          <SelectItem value="+46">+46 (SE)</SelectItem>
+                          <SelectItem value="+47">+47 (NO)</SelectItem>
+                          <SelectItem value="+48">+48 (PL)</SelectItem>
+                          <SelectItem value="+49">+49 (DE)</SelectItem>
+                          <SelectItem value="+90">+90 (TR)</SelectItem>
+                          <SelectItem value="+353">+353 (IE)</SelectItem>
+                          <SelectItem value="+358">+358 (FI)</SelectItem>
+                          <SelectItem value="+370">+370 (LT)</SelectItem>
+                          <SelectItem value="+371">+371 (LV)</SelectItem>
+                          <SelectItem value="+372">+372 (EE)</SelectItem>
+                          <SelectItem value="+380">+380 (UA)</SelectItem>
+                          <SelectItem value="+420">+420 (CZ)</SelectItem>
+                          <SelectItem value="+966">+966 (SA)</SelectItem>
+                          <SelectItem value="+971">+971 (AE)</SelectItem>
+                          <SelectItem value="+992">+992 (TJ)</SelectItem>
+                          <SelectItem value="+994">+994 (AZ)</SelectItem>
+                          <SelectItem value="+995">+995 (GE)</SelectItem>
+                          <SelectItem value="+998">+998 (UZ)</SelectItem>
                         </SelectContent>
                       </Select>
                       <Input
@@ -1319,7 +1346,7 @@ const RegistrationPage = () => {
                     <CheckCircle2 className="h-8 w-8" />
                   </div>
                   <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-                    You're all set, {formData.yourName || "there"}!
+                    You're all set, {formData.firstName || "there"}!
                   </h1>
                   <p className="text-gray-600">To help your business thrive, here are a few ways Booksy will do that:</p>
                 </div>

@@ -397,7 +397,6 @@ export default function CalendarPage() {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const businessId = useBusinessId();
-  console.log('🎯 [CalendarPage] Component rendered - businessId:', businessId);
   
   const { getPath } = useNavigation();
   const { appointments: apiAppointments, staff: apiStaff, loading, createAppointment: createAppointmentAPI, deleteAppointment: deleteAppointmentAPI, websocketStatus } = useAppointments(businessId, currentDate);
@@ -659,8 +658,21 @@ export default function CalendarPage() {
   };
 
   const handleEditAppointment = (appointment: Appointment) => {
-    toast.info(`Editing appointment for ${appointment.clientName}`);
+    // Pre-fill the new appointment form with existing appointment data and open it
+    setAppointmentForm({
+      clientId: "",
+      clientName: appointment.clientName || "",
+      clientPhone: "",
+      clientEmail: "",
+      serviceId: appointment.service || "",
+      staffId: appointment.staffId || "",
+      startTime: appointment.startTime || "",
+      endTime: appointment.endTime || "",
+      notes: "",
+      price: "",
+    });
     handleCloseModal();
+    setIsNewAppointmentOpen(true);
   };
 
   const handleDeleteAppointment = async (appointmentId: string) => {

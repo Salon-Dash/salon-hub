@@ -42,18 +42,12 @@ const filterAndSortUnsettledAppointments = (appointments: Appointment[]): Appoin
     });
 };
 
-// Sidebar categories
-const categories = [
+// Sidebar category definitions (module-level constant — not the categories state inside the component)
+const SALE_CATEGORIES = [
   { id: "quick-sale", name: "QUICK SALE", active: true },
   { id: "to-be-settled", name: "TO BE SETTLED" },
   { id: "services", name: "SERVICES" },
   { id: "extras", name: "EXTRAS" },
-  // Disabled sections from products to timepass
-  // { id: "products", name: "PRODUCTS" },
-  // { id: "own-amount", name: "OWN AMOUNT" },
-  // { id: "gift-cards", name: "GIFT CARDS" },
-  // { id: "packages", name: "PACKAGES" },
-  // { id: "time-passes", name: "TIME PASSES" },
 ];
 
 // Transaction interface for display
@@ -562,8 +556,9 @@ export default function SalesPage() {
 
   const calculateTotal = () => {
     return basket.reduce((sum, item) => {
-      const price = parseFloat(item.price.replace(" PLN", "").replace(",", "."));
-      return sum + price;
+      const raw = parseFloat(String(item.price ?? "0").replace(/[^0-9.,]/g, "").replace(",", "."));
+      const itemPrice = isNaN(raw) ? 0 : raw;
+      return sum + itemPrice;
     }, 0);
   };
 
@@ -582,13 +577,16 @@ export default function SalesPage() {
 
   // If payment method page is shown, render it instead
   if (showPaymentMethod) {
-    const orderItems = basket.map(item => ({
-      id: item.basketId,
-      name: item.name,
-      quantity: 1,
-      price: parseFloat(item.price.replace(" PLN", "").replace(",", ".")),
-      duration: item.duration,
-    }));
+    const orderItems = basket.map(item => {
+      const raw = parseFloat(String(item.price ?? "0").replace(/[^0-9.,]/g, "").replace(",", "."));
+      return {
+        id: item.basketId,
+        name: item.name,
+        quantity: 1,
+        price: isNaN(raw) ? 0 : raw,
+        duration: item.duration,
+      };
+    });
 
     return (
       <PaymentMethodPage
@@ -611,7 +609,8 @@ export default function SalesPage() {
 
             // Convert basket items to sale items
             const saleItems = basket.map(item => {
-              const price = parseFloat(item.price.replace(" PLN", "").replace(",", "."));
+              const rawPrice = parseFloat(String(item.price ?? "0").replace(/[^0-9.,]/g, "").replace(",", "."));
+              const price = isNaN(rawPrice) ? 0 : rawPrice;
               return {
                 serviceId: item.serviceId,
                 serviceName: item.name,
@@ -1209,7 +1208,7 @@ export default function SalesPage() {
             <div className="w-96 border-r border-gray-200 bg-white">
               {/* Header */}
               <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-                <button className="text-gray-600 hover:text-gray-900">
+                <button className="text-gray-600 hover:text-gray-900" onClick={() => setActiveTab("NEW SALES")}>
                   <ArrowLeft size={20} />
                 </button>
                 <h2 className="text-lg font-semibold text-gray-900">All transactions</h2>
@@ -1319,7 +1318,11 @@ export default function SalesPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {transactions.map((transaction) => (
+                  {transactions
+                    .filter(t => !searchQuery ||
+                      t.clientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      t.id?.toString().includes(searchQuery))
+                    .map((transaction) => (
                   <div
                     key={transaction.id}
                     onClick={() => setSelectedTransaction(transaction)}

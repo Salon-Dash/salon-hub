@@ -62,6 +62,17 @@ export default function BusinessHoursPage() {
   };
 
   const handleSave = async () => {
+    // Validate: enabled days must have endTime > startTime
+    const invalidDays = DAYS.filter(d => {
+      const day = schedule[d.key];
+      if (!day.enabled) return false;
+      return day.endTime <= day.startTime;
+    });
+    if (invalidDays.length > 0) {
+      toast.error(`End time must be after start time for: ${invalidDays.map(d => d.label).join(", ")}`);
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = DAYS.map(d => ({
