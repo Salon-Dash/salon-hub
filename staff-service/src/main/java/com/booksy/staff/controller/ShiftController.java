@@ -65,7 +65,10 @@ public class ShiftController {
             @PathVariable Long businessId,
             @RequestBody Map<String, Object> body) {
         Long staffId = Long.parseLong(body.get("staffId").toString());
-        LocalDate shiftDate = LocalDate.parse(body.get("shiftDate").toString());
+        Object dateVal = body.containsKey("shiftDate") ? body.get("shiftDate") : body.get("date");
+        if (dateVal == null) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "shiftDate is required");
+        LocalDate shiftDate = LocalDate.parse(dateVal.toString());
         String startTime = body.get("startTime").toString();
         String endTime = body.get("endTime").toString();
         String notes = body.containsKey("notes") ? (String) body.get("notes") : null;
