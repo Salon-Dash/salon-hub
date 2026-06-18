@@ -660,16 +660,16 @@ export default function CalendarPage() {
   const handleEditAppointment = (appointment: Appointment) => {
     // Pre-fill the new appointment form with existing appointment data and open it
     setAppointmentForm({
-      clientId: "",
+      clientId: appointment.clientId ? String(appointment.clientId) : "",
       clientName: appointment.clientName || "",
-      clientPhone: "",
-      clientEmail: "",
+      clientPhone: (appointment as any).clientPhone || "",
+      clientEmail: (appointment as any).clientEmail || "",
       serviceId: appointment.service || "",
       staffId: appointment.staffId || "",
       startTime: appointment.startTime || "",
       endTime: appointment.endTime || "",
-      notes: "",
-      price: "",
+      notes: (appointment as any).notes || "",
+      price: (appointment as any).price ? String((appointment as any).price) : "",
     });
     handleCloseModal();
     setIsNewAppointmentOpen(true);
