@@ -10,7 +10,6 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -47,8 +46,8 @@ public class PaymentConfirmationController {
         double total = subtotal - discountAmount + tipAmount;
 
         LocalDateTime now = LocalDateTime.now();
-        String saleDate = LocalDate.now().toString();
-        String saleTime = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
+        java.sql.Date saleDate = java.sql.Date.valueOf(LocalDate.now());
+        java.sql.Time saleTime = java.sql.Time.valueOf(LocalTime.now());
 
         // Try to insert into sales table; create it if missing
         Long saleId = null;
