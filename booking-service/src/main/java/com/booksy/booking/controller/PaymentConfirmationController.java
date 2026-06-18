@@ -2,7 +2,6 @@ package com.booksy.booking.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -35,7 +34,6 @@ public class PaymentConfirmationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
     public Map<String, Object> confirmPayment(@RequestBody Map<String, Object> body) {
         int businessId = toInt(body.get("businessId"));
         if (businessId <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "businessId is required");

@@ -266,6 +266,19 @@ spring:
                 deny-empty-key: false
                 empty-key-status-code: 429
 
+        # Service Catalog (Public studio services) — must come before the general studios route
+        - id: service-catalog-public-studio-services
+          uri: lb://service-catalog-service
+          predicates:
+            - Path=/api/public/studios/*/services, /api/public/salons/*/services
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter: "#{@publicRateLimiter}"
+                key-resolver: "#{@ipKeyResolver}"
+                deny-empty-key: false
+                empty-key-status-code: 429
+
         # Business Service (Public Studio APIs) — public limit (20 req/s per IP)
         - id: business-service-public-studios
           uri: lb://business-service
