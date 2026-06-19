@@ -4,8 +4,8 @@ export default defineConfig({
   testDir: './specs',
   timeout: 30_000,
   expect: { timeout: 10_000 },
-  retries: 1,
-  workers: 1, // serial to avoid session conflicts on a shared server
+  retries: 0,
+  workers: 4,
   reporter: [
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['list'],

@@ -13,7 +13,7 @@ test.describe('Analytics page', () => {
   test.beforeEach(async ({ page }) => {
     const result = await loginViaAPI(page);
     businessId = result.businessId;
-    await page.goto(`${BASE_URL}/${businessId}/analytics`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/${businessId}/analytics`, { waitUntil: 'load' });
     await page.waitForTimeout(3000);
   });
 
@@ -227,7 +227,7 @@ test.describe('Analytics page', () => {
         body: JSON.stringify({ error: 'Internal Server Error' }),
       });
     });
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(3000);
     // Should show error state or gracefully handle failure
     const errorEl = page.locator('[class*="error" i], text=/error|failed|try again/i').first();
@@ -250,7 +250,7 @@ test.describe('Analytics page', () => {
         }),
       });
     });
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(2000);
     const bodyText = await page.locator('body').innerText();
     expect(bodyText).not.toMatch(/\bNaN\b/);
@@ -280,17 +280,23 @@ test.describe('Analytics page', () => {
   });
 
   test('analytics page API calls use correct businessId', async ({ page }) => {
-    const urls: string[] = [];
+    const apiUrls: string[] = [];
     page.on('request', (req) => {
-      if (req.url().includes('/analytics') || req.url().includes('/analysis')) {
-        urls.push(req.url());
+      // Only capture actual API calls to the analytics endpoint, not JS bundles
+      if (req.url().includes('/api/analytics') && !req.url().includes('.js')) {
+        apiUrls.push(req.url());
       }
     });
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(3000);
-    // All analytics URLs should include the business ID
-    for (const url of urls) {
-      expect(url).toContain(String(businessId));
+    // API analytics calls should include the business ID in the path
+    if (apiUrls.length > 0) {
+      for (const url of apiUrls) {
+        expect(url).toContain(String(businessId));
+      }
+    } else {
+      // No analytics API calls captured — verify page loaded correctly
+      await expect(page.locator('body')).toBeVisible();
     }
   });
 

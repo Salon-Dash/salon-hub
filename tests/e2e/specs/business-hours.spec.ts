@@ -14,7 +14,7 @@ test.describe('Business Hours page', () => {
   test.beforeEach(async ({ page }) => {
     const result = await loginViaAPI(page);
     businessId = result.businessId;
-    await page.goto(`${BASE_URL}/${businessId}/business-hours`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/${businessId}/business-hours`, { waitUntil: 'load' });
     await page.waitForTimeout(2000);
   });
 
@@ -61,7 +61,7 @@ test.describe('Business Hours page', () => {
         route.continue();
       }
     });
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(2000);
 
     // With empty API response, the component should initialize with defaults
@@ -257,7 +257,7 @@ test.describe('Business Hours page', () => {
       await page.waitForTimeout(3000);
 
       // Reload and check value
-      await page.reload({ waitUntil: 'networkidle' });
+      await page.reload({ waitUntil: 'load' });
       await page.waitForTimeout(2000);
       const reloadedInput = page.locator('tr, [class*="row" i], div').filter({ hasText: /Monday/ }).first()
         .locator('input[type="time"]').first();
