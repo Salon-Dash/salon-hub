@@ -51,7 +51,7 @@ public class ServiceCatalogService {
         entity.setCategoryId(req.categoryId());
         entity.setName(req.name());
         entity.setDescription(req.description());
-        entity.setDuration(req.duration() != null ? req.duration() : 60);
+        entity.setDuration(req.durationMinutes() != null ? req.durationMinutes() : 60);
         entity.setPrice(req.price());
         entity.setServiceType(req.serviceType() != null ? req.serviceType() : "standard");
         entity.setIsActive(true);
@@ -67,7 +67,7 @@ public class ServiceCatalogService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found: " + id));
         if (req.name() != null) entity.setName(req.name());
         if (req.description() != null) entity.setDescription(req.description());
-        if (req.duration() != null) entity.setDuration(req.duration());
+        if (req.durationMinutes() != null) entity.setDuration(req.durationMinutes());
         if (req.price() != null) entity.setPrice(req.price());
         if (req.categoryId() != null) entity.setCategoryId(req.categoryId());
         entity.setUpdatedAt(LocalDateTime.now());
@@ -260,7 +260,7 @@ public class ServiceCatalogService {
             : null;
         return new ServiceDto(
             s.getId(), s.getBusinessId(), s.getCategoryId(), categoryName,
-            s.getName(), s.getDescription(), s.getDuration(), s.getPrice(),
+            s.getName(), s.getDescription(), s.getDuration(), s.getPrice(), // maps entity.duration → dto.durationMinutes
             s.getServiceType(), s.getIsActive(), s.getIsVisible()
         );
     }

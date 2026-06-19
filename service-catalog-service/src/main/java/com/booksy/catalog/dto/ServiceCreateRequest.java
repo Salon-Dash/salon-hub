@@ -7,7 +7,7 @@ public record ServiceCreateRequest(
     Long categoryId,
     String name,
     String description,
-    Integer duration,
+    Integer durationMinutes,
     BigDecimal price,
     String serviceType
 ) {}

@@ -55,7 +55,7 @@ public class ServiceCatalogController {
                                                 @RequestBody ServiceCreateRequest request) {
         ServiceCreateRequest withBiz = request.businessId() != null ? request
                 : new ServiceCreateRequest(businessId, request.categoryId(), request.name(),
-                        request.description(), request.duration(), request.price(), request.serviceType());
+                        request.description(), request.durationMinutes(), request.price(), request.serviceType());
         return catalogService.createService(withBiz);
     }
 

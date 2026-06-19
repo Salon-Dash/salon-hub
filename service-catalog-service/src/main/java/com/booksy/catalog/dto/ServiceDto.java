@@ -9,7 +9,7 @@ public record ServiceDto(
     String categoryName,
     String name,
     String description,
-    Integer duration,
+    Integer durationMinutes,
     BigDecimal price,
     String serviceType,
     Boolean isActive,
