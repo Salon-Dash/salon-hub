@@ -500,6 +500,13 @@ export default function CalendarPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const [isAddReservationOpen, setIsAddReservationOpen] = useState(false);
+  const [reservationForm, setReservationForm] = useState({
+    staffId: "",
+    date: format(currentDate, "yyyy-MM-dd"),
+    startTime: "10:00",
+    endTime: "11:00",
+    reason: "",
+  });
   const [isAddTimeOffOpen, setIsAddTimeOffOpen] = useState(false);
   const [timeOffForm, setTimeOffForm] = useState({
     staffId: "",
@@ -2521,7 +2528,21 @@ export default function CalendarPage() {
       </Sheet>
 
       {/* Add Time Reservation Sheet */}
-      <Sheet open={isAddReservationOpen} onOpenChange={setIsAddReservationOpen}>
+      <Sheet open={isAddReservationOpen} onOpenChange={(open) => {
+        if (open && finalSelection) {
+          setReservationForm(prev => ({
+            ...prev,
+            staffId: finalSelection.staffId || prev.staffId,
+            startTime: finalSelection.startTime || prev.startTime,
+            endTime: finalSelection.endTime || prev.endTime,
+            date: format(currentDate, "yyyy-MM-dd"),
+          }));
+        }
+        if (!open) {
+          setReservationForm({ staffId: "", date: format(currentDate, "yyyy-MM-dd"), startTime: "10:00", endTime: "11:00", reason: "" });
+        }
+        setIsAddReservationOpen(open);
+      }}>
         <SheetContent side="right" className="w-full sm:w-[500px] !max-w-none p-0 flex flex-col h-screen max-h-screen">
           {/* Header */}
           <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between shrink-0">
@@ -2533,22 +2554,21 @@ export default function CalendarPage() {
             {/* Date */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-gray-700">Date</Label>
-              <Select defaultValue="today">
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="tomorrow">Tomorrow</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
+              <input
+                type="date"
+                value={reservationForm.date}
+                onChange={(e) => setReservationForm(prev => ({ ...prev, date: e.target.value }))}
+                className="h-9 w-full text-sm border border-gray-200 rounded-md px-3"
+              />
             </div>
 
             {/* Start Time */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-gray-700">Start</Label>
-              <Select defaultValue={finalSelection?.startTime || "10:45"}>
+              <Select
+                value={reservationForm.startTime}
+                onValueChange={(v) => setReservationForm(prev => ({ ...prev, startTime: v }))}
+              >
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue />
                 </SelectTrigger>
@@ -2565,7 +2585,10 @@ export default function CalendarPage() {
             {/* End Time */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-gray-700">End</Label>
-              <Select defaultValue={finalSelection?.endTime || "11:00"}>
+              <Select
+                value={reservationForm.endTime}
+                onValueChange={(v) => setReservationForm(prev => ({ ...prev, endTime: v }))}
+              >
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue />
                 </SelectTrigger>
@@ -2582,14 +2605,17 @@ export default function CalendarPage() {
             {/* Staffer */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-gray-700">Staffer</Label>
-              <Select defaultValue={finalSelection?.staffId || staff[0]?.id}>
+              <Select
+                value={reservationForm.staffId || (staff[0]?.id ?? "")}
+                onValueChange={(v) => setReservationForm(prev => ({ ...prev, staffId: v }))}
+              >
                 <SelectTrigger className="h-9 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {staff.map((staff) => (
-                    <SelectItem key={staff.id} value={staff.id}>
-                      {staff.name}
+                  {staff.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -2601,6 +2627,8 @@ export default function CalendarPage() {
               <Label className="text-xs font-medium text-gray-700">Reason</Label>
               <Textarea
                 placeholder="Reason"
+                value={reservationForm.reason}
+                onChange={(e) => setReservationForm(prev => ({ ...prev, reason: e.target.value }))}
                 className="min-h-[100px] text-sm resize-y"
               />
             </div>
@@ -2617,9 +2645,27 @@ export default function CalendarPage() {
             </Button>
             <Button
               className="flex-1 h-9 text-sm bg-gray-900 hover:bg-gray-800 text-white"
-              onClick={() => {
-                toast.success("Time reservation saved successfully");
-                setIsAddReservationOpen(false);
+              disabled={!reservationForm.staffId && !staff[0]?.id}
+              onClick={async () => {
+                try {
+                  const staffIdToUse = reservationForm.staffId || staff[0]?.id;
+                  if (!staffIdToUse) { toast.error("Please select a staff member"); return; }
+                  await createTimeOff({
+                    businessId,
+                    staffId: Number(staffIdToUse),
+                    startDate: reservationForm.date,
+                    endDate: reservationForm.date,
+                    startTime: reservationForm.startTime,
+                    endTime: reservationForm.endTime,
+                    isFullDay: false,
+                    reason: reservationForm.reason || "Reservation",
+                  });
+                  toast.success("Time reservation saved successfully");
+                  setIsAddReservationOpen(false);
+                  setFinalSelection(null);
+                } catch {
+                  toast.error("Failed to save reservation");
+                }
               }}
             >
               SAVE

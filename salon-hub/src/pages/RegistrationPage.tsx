@@ -17,6 +17,8 @@ import { toast } from "sonner";
 import AddressMapPicker from "@/components/AddressMapPicker";
 import { authService } from "@/services/authService";
 import { businessService } from "@/services/businessService";
+import { serviceService } from "@/services/serviceService";
+import { staffService } from "@/services/staffService";
 
 interface RegistrationData {
   firstName: string;
@@ -389,6 +391,41 @@ const RegistrationPage = () => {
         await businessHoursService.updateBusinessHours(business.id, hoursPayload);
       } catch {
         // Non-fatal — hours can be set later in settings
+      }
+
+      // Create services added during registration
+      for (const svc of formData.services) {
+        try {
+          // duration stored as "hours:minutes" string e.g. "0:30"
+          const [h, m] = svc.duration.split(':').map(Number);
+          const durationMinutes = (h || 0) * 60 + (m || 0) || 60;
+          const priceTypeMap: Record<string, 'FIXED' | 'FROM' | 'RANGE'> = {
+            Fixed: 'FIXED', From: 'FROM', Range: 'RANGE',
+          };
+          await serviceService.createService(business.id, {
+            name: svc.name,
+            durationMinutes,
+            price: svc.price ? parseFloat(svc.price) : undefined,
+            priceType: priceTypeMap[svc.priceType] || 'FIXED',
+          });
+        } catch {
+          // Non-fatal — services can be added later
+        }
+      }
+
+      // Invite staff members added during registration
+      for (const member of formData.staffMembers) {
+        try {
+          await staffService.createStaff(business.id, {
+            name: member.name,
+            email: member.email,
+            phone: member.phone,
+            position: member.position,
+            inviteAndCreateAccount: true,
+          });
+        } catch {
+          // Non-fatal — staff can be added later
+        }
       }
 
       toast.success("Registration completed! Welcome to Booksy!");
