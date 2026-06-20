@@ -399,7 +399,7 @@ export default function CalendarPage() {
   const businessId = useBusinessId();
   
   const { getPath } = useNavigation();
-  const { appointments: apiAppointments, staff: apiStaff, loading, createAppointment: createAppointmentAPI, deleteAppointment: deleteAppointmentAPI, websocketStatus } = useAppointments(businessId, currentDate);
+  const { appointments: apiAppointments, staff: apiStaff, loading, createAppointment: createAppointmentAPI, updateAppointment: updateAppointmentAPI, deleteAppointment: deleteAppointmentAPI, websocketStatus } = useAppointments(businessId, currentDate);
   const { services } = useServices(businessId);
   const { timeOffs, createTimeOff } = useTimeOff(businessId);
   const { businessHours, getHoursForDay, getDefaultHours } = useBusinessHours(businessId);
@@ -524,6 +524,7 @@ export default function CalendarPage() {
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   
   // Appointment form state
+  const [editingAppointmentId, setEditingAppointmentId] = useState<number | null>(null);
   const [appointmentForm, setAppointmentForm] = useState({
     clientId: "",
     clientName: "",
@@ -535,6 +536,7 @@ export default function CalendarPage() {
     endTime: "",
     notes: "",
     price: "",
+    date: format(currentDate, 'yyyy-MM-dd'),
   });
   const [serviceSearchOpen, setServiceSearchOpen] = useState(false);
 
@@ -658,7 +660,7 @@ export default function CalendarPage() {
   };
 
   const handleEditAppointment = (appointment: Appointment) => {
-    // Pre-fill the new appointment form with existing appointment data and open it
+    setEditingAppointmentId(appointment.apiId ? Number(appointment.apiId) : null);
     setAppointmentForm({
       clientId: appointment.clientId ? String(appointment.clientId) : "",
       clientName: appointment.clientName || "",
@@ -670,6 +672,7 @@ export default function CalendarPage() {
       endTime: appointment.endTime || "",
       notes: (appointment as any).notes || "",
       price: (appointment as any).price ? String((appointment as any).price) : "",
+      date: appointment.date ? format(appointment.date, 'yyyy-MM-dd') : format(currentDate, 'yyyy-MM-dd'),
     });
     handleCloseModal();
     setIsNewAppointmentOpen(true);
@@ -1751,6 +1754,7 @@ export default function CalendarPage() {
         onClose={handleCloseModal}
         onEdit={handleEditAppointment}
         onDelete={handleDeleteAppointment}
+        onCancelled={() => { handleCloseModal(); }}
       />
 
       {/* Day Appointments Popup */}
@@ -1970,19 +1974,9 @@ export default function CalendarPage() {
                     setShowConflictDialog(false);
                     setPendingAppointmentData(null);
                     setIsNewAppointmentOpen(false);
+                    setEditingAppointmentId(null);
                     setFinalSelection(null);
-                    // Reset form
-                    setAppointmentForm({
-                      clientName: "",
-                      clientPhone: "",
-                      clientEmail: "",
-                      serviceId: "",
-                      staffId: "",
-                      startTime: "",
-                      endTime: "",
-                      notes: "",
-                      price: "",
-                    });
+                    setAppointmentForm({ clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd') });
                     toast.success("Appointment created successfully (with conflict)");
                   } catch (error) {
                     toast.error("Failed to create appointment");
@@ -2045,19 +2039,9 @@ export default function CalendarPage() {
                     setShowAppointmentTimeOffConflictDialog(false);
                     setPendingAppointmentWithTimeOffData(null);
                     setIsNewAppointmentOpen(false);
+                    setEditingAppointmentId(null);
                     setFinalSelection(null);
-                    // Reset form
-                    setAppointmentForm({
-                      clientName: "",
-                      clientPhone: "",
-                      clientEmail: "",
-                      serviceId: "",
-                      staffId: "",
-                      startTime: "",
-                      endTime: "",
-                      notes: "",
-                      price: "",
-                    });
+                    setAppointmentForm({ clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd') });
                     toast.success("Appointment created successfully");
                   } catch (error) {
                     toast.error("Failed to create appointment");
@@ -2075,7 +2059,7 @@ export default function CalendarPage() {
       <Sheet open={isNewAppointmentOpen} onOpenChange={(open) => {
         setIsNewAppointmentOpen(open);
         if (!open) {
-          // Reset form when closed
+          setEditingAppointmentId(null);
           setAppointmentForm({
             clientId: "",
             clientName: "",
@@ -2087,13 +2071,14 @@ export default function CalendarPage() {
             endTime: "",
             notes: "",
             price: "",
+            date: format(currentDate, 'yyyy-MM-dd'),
           });
         }
       }}>
         <SheetContent side="right" className="!max-w-none w-[500px] p-0 flex flex-col h-screen max-h-screen">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
-            <h2 className="text-base font-semibold">New Appointment</h2>
+            <h2 className="text-base font-semibold">{editingAppointmentId ? 'Edit Appointment' : 'New Appointment'}</h2>
           </div>
 
           {/* Client Selection */}
@@ -2494,7 +2479,7 @@ export default function CalendarPage() {
                   const appointmentData = {
                     staffId: parseInt(appointmentForm.staffId),
                     serviceId: parseInt(appointmentForm.serviceId),
-                    appointmentDate: format(currentDate, 'yyyy-MM-dd'),
+                    appointmentDate: appointmentForm.date || format(currentDate, 'yyyy-MM-dd'),
                     startTime: appointmentForm.startTime,
                     endTime: appointmentForm.endTime,
                     clientId: appointmentForm.clientId ? parseInt(appointmentForm.clientId) : undefined,
@@ -2504,39 +2489,32 @@ export default function CalendarPage() {
                     price: selectedService?.price,
                     notes: appointmentForm.notes || undefined,
                   };
-                  
+
+                  const EMPTY_FORM = { clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd') };
+
                   if (hasTimeOffConflictResult) {
-                    // Show time off conflict dialog
                     setPendingAppointmentWithTimeOffData(appointmentData);
                     setShowAppointmentTimeOffConflictDialog(true);
-                  } else if (hasAppointmentConflict) {
-                    // Show appointment conflict dialog
+                  } else if (hasAppointmentConflict && !editingAppointmentId) {
                     setPendingAppointmentData(appointmentData);
                     setShowConflictDialog(true);
                   } else {
-                    // No conflict, save directly
-                    await createAppointmentAPI(appointmentData);
+                    if (editingAppointmentId) {
+                      await updateAppointmentAPI(editingAppointmentId, appointmentData);
+                    } else {
+                      await createAppointmentAPI(appointmentData);
+                    }
                     setIsNewAppointmentOpen(false);
+                    setEditingAppointmentId(null);
                     setFinalSelection(null);
-                    // Reset form
-                    setAppointmentForm({
-                      clientName: "",
-                      clientPhone: "",
-                      clientEmail: "",
-                      serviceId: "",
-                      staffId: "",
-                      startTime: "",
-                      endTime: "",
-                      notes: "",
-                      price: "",
-                    });
+                    setAppointmentForm(EMPTY_FORM);
                   }
                 } catch (error) {
                   // Error already handled in hook
                 }
               }}
             >
-              CREATE APPOINTMENT
+              {editingAppointmentId ? 'UPDATE APPOINTMENT' : 'CREATE APPOINTMENT'}
             </Button>
           </div>
         </SheetContent>

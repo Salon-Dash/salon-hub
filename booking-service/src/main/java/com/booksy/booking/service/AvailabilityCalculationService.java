@@ -208,7 +208,7 @@ public class AvailabilityCalculationService {
         long bookedSlots = appointments.stream()
             .filter(apt -> apt.getStaffId() == staff.getId() &&
                           apt.getAppointmentDate().equals(date) &&
-                          apt.getStatus().equals("CONFIRMED"))
+                          !apt.getStatus().equals("CANCELLED"))
             .count();
 
         int availableSlots = Math.max(0, totalSlots - (int)bookedSlots);
@@ -227,9 +227,10 @@ public class AvailabilityCalculationService {
                 .map(staff -> {
                     AvailableMaster master = new AvailableMaster();
                     master.setId(staff.getId());
-                    master.setName(staff.getName());
+                    String name = staff.getName() != null ? staff.getName() : "Staff " + staff.getId();
+                    master.setName(name);
                     master.setAvatarUrl(null);
-                    master.setInitials(staff.getName().substring(0, Math.min(2, staff.getName().length())).toUpperCase());
+                    master.setInitials(name.substring(0, Math.min(2, name.length())).toUpperCase());
                     master.setIsAvailable(true);
                     return master;
                 })
@@ -242,9 +243,10 @@ public class AvailabilityCalculationService {
                         .map(staff -> {
                             AvailableMaster master = new AvailableMaster();
                             master.setId(staff.getId());
-                            master.setName(staff.getName());
+                            String name = staff.getName() != null ? staff.getName() : "Staff " + staff.getId();
+                            master.setName(name);
                             master.setAvatarUrl(null);
-                            master.setInitials(staff.getName().substring(0, Math.min(2, staff.getName().length())).toUpperCase());
+                            master.setInitials(name.substring(0, Math.min(2, name.length())).toUpperCase());
                             master.setIsAvailable(true);
                             return master;
                         })

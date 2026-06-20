@@ -218,7 +218,21 @@ public class BookingController {
 
     @PutMapping("/{bookingId}")
     public Appointment updateBooking(@PathVariable long bookingId, @RequestBody BookingRequest request) {
+        // Fetch existing to preserve status and check it exists
+        Appointment existing = findById(bookingId);
+        if (existing == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found: " + bookingId);
+        }
+        // Conflict check (exclude the current booking from the check)
+        Integer conflictCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM appointments WHERE staff_id = ? AND appointment_date = ? AND status != 'CANCELLED' AND id != ? AND start_time < ? AND end_time > ?",
+                Integer.class, request.staffId(), request.appointmentDate(), bookingId, request.endTime(), request.startTime());
+        if (conflictCount != null && conflictCount > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked for the selected staff member");
+        }
         Appointment updated = toAppointment(bookingId, request);
+        // Preserve the existing status unless explicitly provided in the request
+        updated.setStatus(existing.getStatus());
         ServiceSnapshot serviceSnapshot = fetchServiceSnapshot(updated.getBusinessId(), updated.getServiceId());
         if (serviceSnapshot != null) {
             updated.setServiceName(serviceSnapshot.name());
@@ -250,8 +264,10 @@ public class BookingController {
         if (rows == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found: " + bookingId);
         }
-        publishAppointmentUpdate(updated);
-        return updated;
+        // Re-fetch the full row so the response includes all fields (clientPhone, paymentStatus, etc.)
+        Appointment refreshed = findById(bookingId);
+        publishAppointmentUpdate(refreshed != null ? refreshed : updated);
+        return refreshed != null ? refreshed : updated;
     }
 
     @PutMapping("/{bookingId}/confirm")

@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
@@ -48,7 +49,7 @@ public class AnalyticsController {
 
         LocalDate start = resolveStart(startDate);
         LocalDate end = resolveEnd(endDate);
-        LocalDate prevStart = start.minusDays(start.until(end).getDays() + 1);
+        LocalDate prevStart = start.minusDays(ChronoUnit.DAYS.between(start, end) + 1);
         LocalDate prevEnd = start.minusDays(1);
 
         // Current period totals
@@ -234,10 +235,11 @@ public class AnalyticsController {
         LocalDate end = resolveEnd(endDate);
 
         Map<String, Object> totals = jdbc.queryForMap(
-                "SELECT COUNT(DISTINCT LOWER(COALESCE(client_name,''))) FILTER (WHERE client_name IS NOT NULL) AS total_clients, " +
-                "COUNT(DISTINCT LOWER(COALESCE(client_name,''))) FILTER (WHERE client_name IS NOT NULL AND appointment_date BETWEEN ? AND ?) AS new_clients " +
-                "FROM appointments WHERE business_id = ? AND status != 'CANCELLED'",
-                start, end, businessId);
+                "SELECT " +
+                "COUNT(DISTINCT LOWER(COALESCE(client_name,''))) FILTER (WHERE client_name IS NOT NULL AND appointment_date BETWEEN ? AND ?) AS total_clients, " +
+                "COUNT(DISTINCT LOWER(COALESCE(client_name,''))) FILTER (WHERE client_name IS NOT NULL AND appointment_date < ?) AS returning_base " +
+                "FROM appointments WHERE business_id = ? AND status != 'CANCELLED' AND appointment_date BETWEEN ? AND ?",
+                start, end, start, businessId, start, end);
 
         List<Map<String, Object>> topClients = jdbc.queryForList(
                 "SELECT 0 AS \"clientId\", client_name AS \"clientName\", COUNT(*) AS \"totalBookings\", " +
@@ -247,12 +249,15 @@ public class AnalyticsController {
                 businessId, start, end);
 
         long total = toLong(totals.get("total_clients"));
-        long newC = toLong(totals.get("new_clients"));
+        long returningBase = toLong(totals.get("returning_base"));
+        // Returning = clients in this period who have visited before (appeared before period start)
+        long returning = Math.min(total, returningBase);
+        long newC = Math.max(0, total - returning);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalClients", total);
         result.put("newClients", newC);
-        result.put("returningClients", Math.max(0, total - newC));
+        result.put("returningClients", returning);
         result.put("retentionRate", total > 0 ? (double)(total - newC) / total * 100 : 0);
         result.put("newClientRate", total > 0 ? (double) newC / total * 100 : 0);
         result.put("clientGrowth", List.of());

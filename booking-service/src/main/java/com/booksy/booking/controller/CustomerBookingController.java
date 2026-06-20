@@ -6,9 +6,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +28,7 @@ import java.util.Map;
 public class CustomerBookingController {
 
     private final AppointmentRepository appointmentRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * GET /api/customer/bookings
@@ -80,10 +84,36 @@ public class CustomerBookingController {
         appt.setStatus("CONFIRMED");
         if (body.get("appointmentDate") != null)
             appt.setAppointmentDate(java.time.LocalDate.parse(body.get("appointmentDate").toString()));
-        if (body.get("startTime") != null)
-            appt.setStartTime(java.time.LocalTime.parse(body.get("startTime").toString().substring(0, 5)));
-        if (body.get("endTime") != null)
-            appt.setEndTime(java.time.LocalTime.parse(body.get("endTime").toString().substring(0, 5)));
+        if (body.get("startTime") != null) {
+            String t = body.get("startTime").toString();
+            appt.setStartTime(java.time.LocalTime.parse(t.length() >= 5 ? t.substring(0, 5) : t));
+        }
+        if (body.get("endTime") != null) {
+            String t = body.get("endTime").toString();
+            appt.setEndTime(java.time.LocalTime.parse(t.length() >= 5 ? t.substring(0, 5) : t));
+        }
+
+        // Double-booking check
+        if (appt.getStaffId() > 0 && appt.getAppointmentDate() != null && appt.getStartTime() != null && appt.getEndTime() != null) {
+            Integer conflicts = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM appointments WHERE staff_id = ? AND appointment_date = ? AND status != 'CANCELLED' AND start_time < ? AND end_time > ?",
+                    Integer.class, appt.getStaffId(), appt.getAppointmentDate(), appt.getEndTime(), appt.getStartTime());
+            if (conflicts != null && conflicts > 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
+            }
+        }
+
+        // Fetch service name and price from services table
+        try {
+            Map<String, Object> svc = jdbcTemplate.queryForMap(
+                    "SELECT name, price FROM services WHERE id = ? AND business_id = ?",
+                    appt.getServiceId(), appt.getBusinessId());
+            appt.setServiceName((String) svc.get("name"));
+            Object price = svc.get("price");
+            if (price instanceof BigDecimal) appt.setPrice((BigDecimal) price);
+        } catch (Exception ignored) {
+            // Service not found — proceed without name/price rather than failing the booking
+        }
 
         Appointment saved = appointmentRepository.save(appt);
         log.info("Customer booking created id={} for {}", saved.getId(), email);

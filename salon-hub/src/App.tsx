@@ -138,7 +138,7 @@ const App = () => (
               <Route path="contacts" element={<Suspense fallback={<PageLoader />}><ClientsPage /></Suspense>} />
               <Route path="analytics" element={<Suspense fallback={<PageLoader />}><AnalyticsPage /></Suspense>} />
               <Route path="staff" element={<Suspense fallback={<PageLoader />}><StaffPage /></Suspense>} />
-              <Route path="edit-staff" element={<Suspense fallback={<PageLoader />}><EditStaffPage /></Suspense>} />
+              <Route path="edit-staff/:id" element={<Suspense fallback={<PageLoader />}><EditStaffPage /></Suspense>} />
               <Route path="add-staff" element={<Suspense fallback={<PageLoader />}><AddStaffPage /></Suspense>} />
               <Route path="business" element={<Suspense fallback={<PageLoader />}><BusinessPage /></Suspense>} />
               <Route path="business-hours" element={<Suspense fallback={<PageLoader />}><BusinessHoursPage /></Suspense>} />

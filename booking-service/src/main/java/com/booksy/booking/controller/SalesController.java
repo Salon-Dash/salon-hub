@@ -130,7 +130,7 @@ public class SalesController {
                     "si.service_type, si.quantity, si.unit_price, si.total_price, si.duration, si.notes AS item_notes " +
                     "FROM sales s LEFT JOIN sale_items si ON si.sale_id = s.id WHERE s.id = ?", id);
             if (rows.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Sale not found");
-            return buildSaleResponse(rows.get(0));
+            return buildSaleResponse(rows);
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception e) {
@@ -250,7 +250,8 @@ public class SalesController {
 
     // ── helpers ──────────────────────────────────────────────────────────
 
-    private Map<String, Object> buildSaleResponse(Map<String, Object> row) {
+    private Map<String, Object> buildSaleResponse(List<Map<String, Object>> rows) {
+        Map<String, Object> row = rows.get(0);
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("id", row.get("id"));
         r.put("businessId", row.get("business_id"));
@@ -281,19 +282,21 @@ public class SalesController {
         r.put("billNumber", row.get("bill_number"));
         r.put("billId", row.get("bill_id"));
 
-        // Build items list (may be empty)
+        // Collect items from ALL rows (one row per sale_item due to LEFT JOIN)
         List<Map<String, Object>> items = new ArrayList<>();
-        if (row.containsKey("item_id") && row.get("item_id") != null) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", row.get("item_id"));
-            item.put("serviceId", row.get("service_id"));
-            item.put("serviceName", row.getOrDefault("item_service_name", row.get("service_name")));
-            item.put("serviceType", row.getOrDefault("service_type", "SERVICE"));
-            item.put("quantity", row.getOrDefault("quantity", 1));
-            item.put("unitPrice", row.getOrDefault("unit_price", row.getOrDefault("total", BigDecimal.ZERO)));
-            item.put("totalPrice", row.getOrDefault("total_price", row.getOrDefault("total", BigDecimal.ZERO)));
-            item.put("duration", row.get("duration"));
-            items.add(item);
+        for (Map<String, Object> r2 : rows) {
+            if (r2.containsKey("item_id") && r2.get("item_id") != null) {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("id", r2.get("item_id"));
+                item.put("serviceId", r2.get("service_id"));
+                item.put("serviceName", r2.getOrDefault("item_service_name", r2.get("service_name")));
+                item.put("serviceType", r2.getOrDefault("service_type", "SERVICE"));
+                item.put("quantity", r2.getOrDefault("quantity", 1));
+                item.put("unitPrice", r2.getOrDefault("unit_price", r2.getOrDefault("total", BigDecimal.ZERO)));
+                item.put("totalPrice", r2.getOrDefault("total_price", r2.getOrDefault("total", BigDecimal.ZERO)));
+                item.put("duration", r2.get("duration"));
+                items.add(item);
+            }
         }
         r.put("items", items);
         return r;

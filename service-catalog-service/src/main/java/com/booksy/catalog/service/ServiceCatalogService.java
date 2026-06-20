@@ -40,7 +40,7 @@ public class ServiceCatalogService {
     public List<StaffRefDto> getStaffForService(Long serviceId) {
         return assignmentRepository.findByServiceId(serviceId)
             .stream()
-            .map(a -> new StaffRefDto((int)(long) a.getStaffId(), null, null, null))
+            .map(a -> new StaffRefDto((int)(long) a.getStaffId(), "Staff " + a.getStaffId(), null, null))
             .toList();
     }
 
@@ -65,6 +65,10 @@ public class ServiceCatalogService {
     public ServiceDto updateService(Long id, ServiceCreateRequest req) {
         ServiceEntity entity = serviceRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found: " + id));
+        // Ownership check: if caller supplies a businessId, it must match the stored one
+        if (req.businessId() != null && !req.businessId().equals(entity.getBusinessId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your service");
+        }
         if (req.name() != null) entity.setName(req.name());
         if (req.description() != null) entity.setDescription(req.description());
         if (req.durationMinutes() != null) entity.setDuration(req.durationMinutes());
@@ -78,6 +82,18 @@ public class ServiceCatalogService {
     public void deactivateService(Long id) {
         ServiceEntity entity = serviceRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found: " + id));
+        entity.setIsActive(false);
+        entity.setUpdatedAt(LocalDateTime.now());
+        serviceRepository.save(entity);
+    }
+
+    @Transactional
+    public void deactivateServiceForBusiness(Long id, Long businessId) {
+        ServiceEntity entity = serviceRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found: " + id));
+        if (!businessId.equals(entity.getBusinessId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your service");
+        }
         entity.setIsActive(false);
         entity.setUpdatedAt(LocalDateTime.now());
         serviceRepository.save(entity);
@@ -130,6 +146,16 @@ public class ServiceCatalogService {
 
     @Transactional
     public void deleteCategory(Long id) {
+        // Unlink all services from this category to avoid dangling foreign keys
+        List<ServiceEntity> services = serviceRepository.findByCategoryIdAndIsActiveTrue(id);
+        // Also unlink inactive services in the same category
+        List<ServiceEntity> allServices = serviceRepository.findAll().stream()
+            .filter(s -> id.equals(s.getCategoryId()))
+            .toList();
+        for (ServiceEntity svc : allServices) {
+            svc.setCategoryId(null);
+            serviceRepository.save(svc);
+        }
         categoryRepository.deleteById(id);
     }
 

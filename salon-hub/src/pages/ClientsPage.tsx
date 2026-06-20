@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { appointmentService } from "@/services/appointmentService";
 import { useServices } from "@/hooks/useServices";
-import { useAppointments } from "@/hooks/useAppointments";
+import { useStaff } from "@/hooks/useStaff";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,7 +56,7 @@ export default function ClientsPage() {
   });
   const businessId = useBusinessId();
   const { services } = useServices(businessId);
-  const { staff } = useAppointments(businessId);
+  const { staff } = useStaff(businessId);
 
   useEffect(() => {
     loadClients();

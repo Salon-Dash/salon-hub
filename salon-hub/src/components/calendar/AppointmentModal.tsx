@@ -26,6 +26,7 @@ interface AppointmentModalProps {
   onClose: () => void;
   onEdit: (appointment: Appointment) => void;
   onDelete: (appointmentId: string) => void;
+  onCancelled?: () => void;
 }
 
 export function AppointmentModal({
@@ -35,6 +36,7 @@ export function AppointmentModal({
   onClose,
   onEdit,
   onDelete,
+  onCancelled,
 }: AppointmentModalProps) {
   const [fullAppointment, setFullAppointment] = useState<ApiAppointment | null>(null);
   const [loading, setLoading] = useState(false);
@@ -319,8 +321,7 @@ export function AppointmentModal({
                       setCancelDialogOpen(false);
                       setCancelReason("");
                       onClose();
-                      // Refresh appointments
-                      window.location.reload();
+                      onCancelled?.();
                     } catch (error: any) {
                       toast.error(error.message || "Failed to cancel appointment");
                     }

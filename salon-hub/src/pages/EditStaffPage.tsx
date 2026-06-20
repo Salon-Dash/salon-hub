@@ -74,7 +74,7 @@ export default function EditStaffPage() {
       }
     };
     loadStaff();
-  }, [id]);
+  }, [id, businessId]);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

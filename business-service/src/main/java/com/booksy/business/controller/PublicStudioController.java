@@ -40,7 +40,7 @@ public class PublicStudioController {
             @RequestParam(required = false) Integer limit) {
 
         StringBuilder sql = new StringBuilder(
-                "SELECT id, name, address, latitude, longitude, status FROM businesses WHERE 1=1"
+                "SELECT id, name, address, latitude, longitude, status FROM businesses WHERE status = 'ACTIVE'"
         );
         List<Object> args = new ArrayList<>();
 

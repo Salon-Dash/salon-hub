@@ -1,6 +1,8 @@
 package com.booksy.booking.controller;
 
 import com.booksy.booking.service.PaymentService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -52,20 +54,21 @@ public class PaymentController {
         }
         // Parse event type and update payment_status
         try {
-            if (payload.contains("\"checkout.session.completed\"")) {
-                // Extract bookingId from metadata and mark as PAID
-                // Simple JSON parsing without extra deps
-                int metaStart = payload.indexOf("\"bookingId\"");
-                if (metaStart > 0) {
-                    int valStart = payload.indexOf("\"", metaStart + 12) + 1;
-                    int valEnd = payload.indexOf("\"", valStart);
-                    if (valStart > 0 && valEnd > valStart) {
-                        long bookingId = Long.parseLong(payload.substring(valStart, valEnd));
-                        jdbcTemplate.update(
-                            "UPDATE appointments SET payment_status = 'PAID', updated_at = NOW() WHERE id = ?",
-                            bookingId);
-                        log.info("Marked booking {} as PAID via Stripe webhook", bookingId);
-                    }
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(payload);
+            String eventType = root.path("type").asText("");
+            if ("checkout.session.completed".equals(eventType)) {
+                // bookingId stored in session metadata
+                String bookingIdStr = root.path("data").path("object").path("metadata").path("bookingId").asText(null);
+                if (bookingIdStr == null) {
+                    bookingIdStr = root.path("data").path("object").path("client_reference_id").asText(null);
+                }
+                if (bookingIdStr != null && !bookingIdStr.isEmpty()) {
+                    long bookingId = Long.parseLong(bookingIdStr);
+                    jdbcTemplate.update(
+                        "UPDATE appointments SET payment_status = 'PAID', updated_at = NOW() WHERE id = ?",
+                        bookingId);
+                    log.info("Marked booking {} as PAID via Stripe webhook", bookingId);
                 }
             }
         } catch (Exception ex) {

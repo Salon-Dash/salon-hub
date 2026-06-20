@@ -127,8 +127,20 @@ public class BusinessController {
     /** GET /api/businesses/{businessId}/branches — list branches */
     @GetMapping("/{businessId}/branches")
     public ResponseEntity<List<Map<String, Object>>> getBranches(@PathVariable Long businessId) {
-        // Return empty list — branches feature is a stub until a proper branches table is added
-        return ResponseEntity.ok(List.of());
+        // Branches are stored as child businesses with category='BRANCH' referencing parent via owner_id match
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT b.id, b.name, b.address, b.latitude, b.longitude, b.phone, b.status, b.created_at " +
+                "FROM businesses b " +
+                "JOIN businesses parent ON parent.id = ? " +
+                "WHERE b.category = 'BRANCH' AND b.owner_id = parent.owner_id AND b.id != ?",
+                businessId, businessId);
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> dto = toDto(row);
+            dto.put("businessId", businessId);
+            result.add(dto);
+        }
+        return ResponseEntity.ok(result);
     }
 
     private Map<String, Object> toDto(Map<String, Object> row) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppLayout, PageHeader } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,7 +50,8 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState("30");
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
-  
+  const fetchIdRef = useRef(0);
+
   // Analytics data states
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [revenue, setRevenue] = useState<RevenueAnalytics | null>(null);
@@ -105,6 +106,7 @@ export default function AnalyticsPage() {
     if (!businessId) return;
 
     const fetchData = async () => {
+      const currentFetchId = ++fetchIdRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -157,10 +159,13 @@ export default function AnalyticsPage() {
           setForecast(await analysisService.getGrowthForecastAnalytics(businessId, sd, ed));
         }
       } catch (err) {
+        if (currentFetchId !== fetchIdRef.current) return; // stale fetch — a newer one is in flight
         console.error("Error fetching analytics:", err);
         setError("Failed to load analytics data");
       } finally {
-        setLoading(false);
+        if (currentFetchId === fetchIdRef.current) {
+          setLoading(false);
+        }
       }
     };
 
@@ -380,6 +385,11 @@ export default function AnalyticsPage() {
           <TabsContent value="staff" className="mt-0">
             {overview?.staffPerformance ? (
               <StaffTab data={overview.staffPerformance} loading={loading} />
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-64 gap-3">
+                <p className="text-sm text-red-500">Failed to load staff data</p>
+                <button onClick={() => { setError(null); setOverview(null); }} className="text-sm text-blue-600 underline">Retry</button>
+              </div>
             ) : (
               <div className="flex items-center justify-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />

@@ -409,15 +409,14 @@ export default function SalesPage() {
                 : '0.00 PLN',
             total: `${sale.total.toFixed(2)} PLN`,
             paidDate: format(new Date(`${sale.saleDate}T${saleTime}`), 'dd/MM/yyyy, HH:mm'),
+            isoDate: new Date(`${sale.saleDate}T${saleTime}`).toISOString(),
             sale: sale,
           };
         });
-        
-        // Sort by date and time (newest first)
+
+        // Sort by date and time (newest first) using ISO string for cross-browser reliability
         convertedTransactions.sort((a, b) => {
-          const dateA = new Date(`${a.date} ${a.time}`);
-          const dateB = new Date(`${b.date} ${b.time}`);
-          return dateB.getTime() - dateA.getTime();
+          return new Date(b.isoDate).getTime() - new Date(a.isoDate).getTime();
         });
         
         setTransactions(convertedTransactions);
@@ -1035,7 +1034,7 @@ export default function SalesPage() {
                           <div
                             key={appointment.id}
                             className="bg-white border-l-4 rounded-r-lg shadow-sm hover:shadow-md transition-all cursor-pointer group"
-                            style={{ borderLeftColor: appointment.color || '#gray' }}
+                            style={{ borderLeftColor: appointment.color || '#9ca3af' }}
                             onClick={() => {
                               // Add appointment service to basket
                               const serviceItem: QuickSaleItem = {

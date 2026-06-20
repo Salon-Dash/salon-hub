@@ -69,7 +69,11 @@ public class ServiceCatalogController {
     public ServiceDto updateServiceForBusiness(@PathVariable Long id,
                                                 @PathVariable Long businessId,
                                                 @RequestBody ServiceCreateRequest request) {
-        return catalogService.updateService(id, request);
+        // Merge path businessId into request so the service layer can validate ownership
+        ServiceCreateRequest withBiz = new ServiceCreateRequest(
+                businessId, request.categoryId(), request.name(),
+                request.description(), request.durationMinutes(), request.price(), request.serviceType());
+        return catalogService.updateService(id, withBiz);
     }
 
     @DeleteMapping("/api/services/{id}")
@@ -82,7 +86,7 @@ public class ServiceCatalogController {
     @DeleteMapping("/api/services/{id}/business/{businessId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteServiceForBusiness(@PathVariable Long id, @PathVariable Long businessId) {
-        catalogService.deactivateService(id);
+        catalogService.deactivateServiceForBusiness(id, businessId);
     }
 
     @PostMapping("/api/services/{serviceId}/staff/{staffId}")

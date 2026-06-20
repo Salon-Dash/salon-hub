@@ -76,6 +76,7 @@ public class AuthService {
         log.info("Login attempt for [{}]", request.emailOrPhone());
 
         User user = userRepository.findByEmail(request.emailOrPhone())
+                .or(() -> userRepository.findByPhone(request.emailOrPhone()))
                 .orElseThrow(() -> {
                     log.warn("Login failed — no account for [{}]", request.emailOrPhone());
                     return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");

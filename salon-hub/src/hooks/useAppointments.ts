@@ -335,6 +335,34 @@ export function useAppointments(businessIdParam?: number, date?: Date) {
     }
   }, [businessId]);
 
+  const updateAppointment = useCallback(async (id: number, request: {
+    staffId: number;
+    serviceId: number;
+    appointmentDate: string;
+    startTime: string;
+    endTime: string;
+    clientId?: number;
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    price?: number;
+    color?: string;
+    notes?: string;
+  }) => {
+    try {
+      const apiRequest = { businessId, ...request };
+      const updated = await appointmentService.updateAppointment(id, apiRequest);
+      const appointmentDate = parse(updated.appointmentDate, 'yyyy-MM-dd', new Date());
+      const converted = convertAppointment(updated, appointmentDate);
+      setAppointments(prev => prev.map(apt => apt.apiId === id ? converted : apt));
+      toast.success('Appointment updated successfully');
+      return converted;
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update appointment');
+      throw err;
+    }
+  }, [businessId]);
+
   const deleteAppointment = useCallback(async (id: number) => {
     try {
       await appointmentService.deleteAppointment(id);
@@ -352,9 +380,10 @@ export function useAppointments(businessIdParam?: number, date?: Date) {
     loading,
     error,
     createAppointment,
+    updateAppointment,
     deleteAppointment,
     refresh: () => loadAppointments(date || new Date()),
-    websocketStatus, // Expose WebSocket status for UI
+    websocketStatus,
   };
 }
 
