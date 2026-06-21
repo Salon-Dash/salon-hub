@@ -340,31 +340,23 @@ services:
     image: ghcr.io/salon-dash/salon-hub/invitation-service:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      # Native binary — no JVM, no JAVA_TOOL_OPTIONS needed
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/booksy_platform
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-booksy}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      <<: *common-env
       SERVER_PORT: 8091
       SPRING_FLYWAY_TABLE: flyway_history_invitation
-      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
-      SPRING_FLYWAY_BASELINE_VERSION: "0"
+      # JVM: Xmx90 + meta90 + native90 = 270m — no Hibernate so lighter than JPA services
+      JAVA_TOOL_OPTIONS: "-Xmx90m -Xms36m -XX:MaxMetaspaceSize=90m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
     healthcheck:
-      # Native starts in ~100ms — no need for 120s start_period
       test: ["CMD-SHELL", "wget -qO- http://localhost:8091/actuator/health > /dev/null || exit 1"]
-      interval: 20s
-      timeout: 3s
-      retries: 3
-      start_period: 15s
+      <<: *spring-healthcheck
     deploy:
       resources:
         limits:
-          memory: 64m
+          memory: 270m
 
   referral-service:
     image: ghcr.io/salon-dash/salon-hub/referral-service:${IMAGE_TAG:-latest}
@@ -373,12 +365,11 @@ services:
       <<: *common-env
       SERVER_PORT: 8092
       SPRING_FLYWAY_TABLE: flyway_history_referral
-      # Disable JPA/Hibernate — stub service (saves ~50MB metaspace)
+      # JPA disabled at runtime. Xmx90 + meta90 + native90 = 270m
       SPRING_AUTOCONFIGURE_EXCLUDE: >-
         org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,
         org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
-      # Xmx64 + 60 meta (no Hibernate) + 76 native = 200m limit
-      JAVA_TOOL_OPTIONS: "-Xmx64m -Xms28m -XX:MaxMetaspaceSize=60m -XX:+UseStringDeduplication -XX:+UseG1GC"
+      JAVA_TOOL_OPTIONS: "-Xmx90m -Xms36m -XX:MaxMetaspaceSize=90m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -390,7 +381,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 200m
+          memory: 270m
 
 volumes:
   postgres_data:
