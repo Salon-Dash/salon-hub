@@ -209,66 +209,56 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
-          IMAGE_TAG: ${{ github.sha }}
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.services }}
-          ALL_CHANGED: ${{ needs.detect-changes.outputs.any-change }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: GH_TOKEN,GH_ACTOR,IMAGE_TAG,CHANGED_SERVICES
-          command_timeout: 15m
+          envs: GH_TOKEN,GH_ACTOR,CHANGED_SERVICES
+          command_timeout: 10m
           script: |
             set -e
             echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
-
             cd /opt/salon-hub
             [ -f .env ] || cp .env.example .env
-            export IMAGE_TAG=$IMAGE_TAG
 
-            # If this is a config-only change, just reload nginx
+            # Config/frontend only — nothing to pull or restart
             if [ -z "$CHANGED_SERVICES" ] || [ "$CHANGED_SERVICES" = "[]" ]; then
-              echo "Config/frontend only — reloading nginx"
               systemctl reload nginx 2>/dev/null || true
+              echo "Config-only deploy done"
               exit 0
             fi
 
-            # Pull only images for services that changed
-            echo "Pulling changed services: $CHANGED_SERVICES"
-            echo "$CHANGED_SERVICES" | tr -d '[]"' | tr ',' '\n' | grep -v '^$' | while read svc; do
-              svc=$(echo "$svc" | tr -d ' ')
-              [ -z "$svc" ] && continue
-              echo "Pulling ghcr.io/salon-dash/salon-hub/${svc}:latest"
-              docker pull "ghcr.io/salon-dash/salon-hub/${svc}:latest" || true
+            # ── Step 1: Pull all changed images IN PARALLEL ──────────────────
+            # Each pull is network-bound, not CPU-bound — parallelism cuts total
+            # wait time from (N × pull_time) to (max single pull_time).
+            echo "Pulling in parallel: $CHANGED_SERVICES"
+            SVCS=$(echo "$CHANGED_SERVICES" | tr -d '[]"' | tr ',' '\n' | tr -d ' ' | grep -v '^$')
+            PIDS=()
+            for svc in $SVCS; do
+              docker pull "ghcr.io/salon-dash/salon-hub/${svc}:latest" &
+              PIDS+=($!)
+            done
+            for pid in "${PIDS[@]}"; do wait "$pid" || true; done
+            echo "All images pulled"
+
+            # ── Step 2: Restart only the changed services ─────────────────────
+            for svc in $SVCS; do
+              echo "Restarting: $svc"
+              IMAGE_TAG=latest docker compose -f docker-compose.prod.yml up -d --no-deps "$svc" || true
             done
 
-            # Restart only changed services with their new 'latest' image
-            # (IMAGE_TAG is the commit SHA — only services rebuilt this run have it)
-            echo "$CHANGED_SERVICES" | tr -d '[]"' | tr ',' '\n' | grep -v '^$' | while read svc; do
-              svc=$(echo "$svc" | tr -d ' ')
-              [ -z "$svc" ] && continue
-              echo "Pulling + restarting: $svc"
-              docker pull "ghcr.io/salon-dash/salon-hub/${svc}:latest" || true
-              # Use latest tag (not commit SHA) since only changed services were built
-              IMAGE_TAG=latest docker compose -f docker-compose.prod.yml up -d --no-deps "$svc" 2>/dev/null || true
-            done
-
-            # Ensure infra services are up — always use 'latest' (they may not have been rebuilt)
-            # Force-remove any containers started outside compose (e.g. manual 'docker run')
-            # to prevent "container name already in use" conflicts
-            for infra in api-gateway eureka-server; do
-              if docker ps -a --format "{{.Names}}" | grep -q "^salon-hub-${infra}-1$"; then
-                MANAGED=$(docker inspect "salon-hub-${infra}-1" --format "{{index .Config.Labels \"com.docker.compose.project\"}}" 2>/dev/null)
-                if [ -z "$MANAGED" ]; then
-                  echo "Removing unmanaged container: salon-hub-${infra}-1"
-                  docker rm -f "salon-hub-${infra}-1" || true
-                fi
+            # ── Step 3: Ensure infra is healthy (start if stopped, skip if running) ──
+            for infra in postgres redis eureka-server api-gateway; do
+              RUNNING=$(docker inspect --format '{{.State.Running}}' "salon-hub-${infra}-1" 2>/dev/null || echo "false")
+              if [ "$RUNNING" != "true" ]; then
+                echo "Starting stopped infra: $infra"
+                IMAGE_TAG=latest docker compose -f docker-compose.prod.yml up -d "$infra" || true
               fi
             done
-            IMAGE_TAG=latest docker compose -f docker-compose.prod.yml up -d postgres redis eureka-server api-gateway
 
-            # Prune old images
+            # ── Step 4: Prune dangling images to free disk ────────────────────
             docker image prune -f
 
-            echo "=== Deploy complete: $IMAGE_TAG ==="
-            docker compose -f docker-compose.prod.yml ps
+            echo "=== Deploy complete ==="
+            docker compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}"
