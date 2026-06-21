@@ -222,10 +222,14 @@ jobs:
             cd /opt/salon-hub
             [ -f .env ] || cp .env.example .env
 
-            # Config/frontend only — nothing to pull or restart
+            # docker-compose.prod.yml changed — apply new config to ALL running services
+            # (memory limits, env vars, etc. take effect on container recreate)
             if [ -z "$CHANGED_SERVICES" ] || [ "$CHANGED_SERVICES" = "[]" ]; then
               systemctl reload nginx 2>/dev/null || true
-              echo "Config-only deploy done"
+              echo "Config-only change — applying docker-compose updates to all services"
+              IMAGE_TAG=latest docker compose -f docker-compose.prod.yml up -d
+              docker image prune -f
+              echo "Config deploy done"
               exit 0
             fi
 
