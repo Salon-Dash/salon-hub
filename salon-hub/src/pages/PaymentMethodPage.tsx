@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -159,6 +160,12 @@ export default function PaymentMethodPage({
       discountPct = subtotal > 0 ? (value / subtotal) * 100 : 0;
     }
 
+    // Discount cannot exceed subtotal
+    if (discount > subtotal + 0.01) {
+      toast.error(`Discount (${discount.toFixed(2)}) cannot exceed subtotal (${subtotal.toFixed(2)})`);
+      return;
+    }
+
     setDiscountAmount(discount);
     setDiscountPercent(discountPct);
     setShowDiscountDialog(false);
@@ -182,6 +189,15 @@ export default function PaymentMethodPage({
   };
 
   const handleConfirm = () => {
+    // Split payment must sum to total
+    if (selectedPaymentMethod === "split") {
+      const splitSum = (parseFloat(splitCashAmount) || 0) + (parseFloat(splitCardAmount) || 0);
+      if (Math.abs(splitSum - total) > 0.01) {
+        toast.error(`Split amounts (${splitSum.toFixed(2)}) must equal total (${total.toFixed(2)})`);
+        return;
+      }
+    }
+
     if (onConfirm) {
       const paymentData: {
         tip: number;
@@ -198,13 +214,13 @@ export default function PaymentMethodPage({
         amount: paymentAmount,
         change: paymentAmount - (subtotal - discountAmount + (selectedTip?.amount || parseFloat(customTip) || 0)),
       };
-      
+
       // Add split amounts if payment method is split
       if (selectedPaymentMethod === "split") {
         paymentData.splitCashAmount = parseFloat(splitCashAmount) || 0;
         paymentData.splitCardAmount = parseFloat(splitCardAmount) || 0;
       }
-      
+
       onConfirm(paymentData);
     }
   };

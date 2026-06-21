@@ -57,6 +57,18 @@ export default function AddStaffPage() {
   };
 
   const handleAddAndSendInvite = async () => {
+    // Email format validation
+    const emailRegex = /^[^@]+@[^@]+\.[^@]+$/;
+    if (formData.email && !emailRegex.test(formData.email)) {
+      toast.error("Invalid email address format");
+      return;
+    }
+    // Name length check
+    if (formData.name && formData.name.length > 255) {
+      toast.error("Name is too long (max 255 characters)");
+      return;
+    }
+
     try {
       await createStaff({
         name: formData.name,

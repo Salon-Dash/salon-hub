@@ -72,7 +72,11 @@ export const appointmentService = {
   },
 
   async createAppointment(request: CreateAppointmentRequest): Promise<Appointment> {
-    return apiClient.post<Appointment>('/appointments', request);
+    const idempotencyKey = `${request.businessId}-${request.staffId}-${request.appointmentDate}-${request.startTime}-${Date.now()}`;
+    return apiClient.post<Appointment>('/appointments', {
+      ...request,
+      idempotencyKey,
+    });
   },
 
   async updateAppointment(id: number, request: CreateAppointmentRequest): Promise<Appointment> {

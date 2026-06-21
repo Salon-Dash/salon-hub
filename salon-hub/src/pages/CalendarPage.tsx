@@ -2456,7 +2456,40 @@ export default function CalendarPage() {
                     toast.error("Please select start and end time");
                     return;
                   }
-                  
+
+                  // End time must be after start time
+                  if (appointmentForm.startTime && appointmentForm.endTime &&
+                      appointmentForm.startTime >= appointmentForm.endTime) {
+                    toast.error("End time must be after start time");
+                    return;
+                  }
+
+                  // Email format validation
+                  const emailRegex = /^[^@]+@[^@]+\.[^@]+$/;
+                  if (appointmentForm.clientEmail && !emailRegex.test(appointmentForm.clientEmail)) {
+                    toast.error("Invalid email address format");
+                    return;
+                  }
+
+                  // Field length limits
+                  if (appointmentForm.clientName && appointmentForm.clientName.length > 255) {
+                    toast.error("Client name is too long (max 255 characters)");
+                    return;
+                  }
+                  if (appointmentForm.notes && appointmentForm.notes.length > 2000) {
+                    toast.error("Notes are too long (max 2000 characters)");
+                    return;
+                  }
+
+                  // Past date check for new appointments only
+                  const appointmentDate = new Date(appointmentForm.date || format(currentDate, 'yyyy-MM-dd'));
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  if (!editingAppointmentId && appointmentDate < today) {
+                    toast.error("Cannot create appointments in the past");
+                    return;
+                  }
+
                   const selectedService = services.find(s => s.id.toString() === appointmentForm.serviceId);
                   
                   // Check for conflicts before saving

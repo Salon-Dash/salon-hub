@@ -66,10 +66,22 @@ export const serviceService = {
   },
 
   async createService(businessId: number, request: CreateServiceRequest): Promise<Service> {
+    if (request.price !== undefined && request.price !== null && request.price < 0) {
+      throw new Error("Service price cannot be negative");
+    }
+    if (request.durationMinutes !== undefined && request.durationMinutes <= 0) {
+      throw new Error("Service duration must be greater than 0");
+    }
     return apiClient.post<Service>(`/services/business/${businessId}`, request);
   },
 
   async updateService(id: number, businessId: number, request: UpdateServiceRequest): Promise<Service> {
+    if (request.price !== undefined && request.price !== null && request.price < 0) {
+      throw new Error("Service price cannot be negative");
+    }
+    if (request.durationMinutes !== undefined && request.durationMinutes <= 0) {
+      throw new Error("Service duration must be greater than 0");
+    }
     return apiClient.put<Service>(`/services/${id}/business/${businessId}`, request);
   },
 
