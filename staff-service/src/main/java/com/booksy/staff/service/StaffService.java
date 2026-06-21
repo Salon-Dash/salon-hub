@@ -109,7 +109,21 @@ public class StaffService {
     }
 
     /**
+     * Return the businessId stored for a given staff member.
+     * Used by the controller to verify ownership before update/delete.
+     */
+    @Transactional(readOnly = true)
+    public Long getBusinessIdForStaff(Long staffId) {
+        return staffRepository.findById(staffId)
+                .map(Staff::getBusinessId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Staff not found with id: " + staffId));
+    }
+
+    /**
      * Update an existing staff member and replace their schedule.
+     * If both the stored businessId and the request businessId are present and differ,
+     * the update is rejected to prevent cross-business data mutation.
      */
     @Transactional
     public StaffDto update(Long id, StaffCreateRequest request) {
@@ -117,6 +131,13 @@ public class StaffService {
         Staff staff = staffRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Staff not found with id: " + id));
+
+        // Ownership check: prevent moving a staff member to a different business
+        if (staff.getBusinessId() != null && request.businessId() != null
+                && !staff.getBusinessId().equals(request.businessId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Staff member does not belong to the specified business");
+        }
 
         staff.setName(request.name());
         staff.setEmail(request.email());
@@ -136,7 +157,8 @@ public class StaffService {
     }
 
     /**
-     * Soft-delete a staff member by marking them inactive.
+     * Soft-delete a staff member by marking them inactive, then cancel their future appointments
+     * in the booking-service (best-effort, fire-and-forget).
      */
     @Transactional
     public void deactivate(Long id) {
@@ -144,8 +166,27 @@ public class StaffService {
         Staff staff = staffRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Staff not found with id: " + id));
+        Long businessId = staff.getBusinessId();
         staff.setIsActive(false);
         staffRepository.save(staff);
+
+        // Cancel future appointments for this staff member (best-effort, fire-and-forget).
+        // The booking-service endpoint POST /api/bookings/business/{businessId}/cancel-staff/{staffId}
+        // is expected to mark future appointments as CANCELLED.
+        try {
+            String url = "http://booking-service:8084/api/bookings/business/" + businessId
+                    + "/cancel-staff/" + id;
+            org.springframework.web.reactive.function.client.WebClient.create()
+                    .post()
+                    .uri(url)
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .subscribe(
+                            v -> log.info("Cancelled future appointments for staff id={}", id),
+                            err -> log.warn("Could not cancel future appointments for deleted staff {}: {}", id, err.getMessage()));
+        } catch (Exception e) {
+            log.warn("Could not cancel future appointments for deleted staff {}: {}", id, e.getMessage());
+        }
     }
 
     // -------------------------------------------------------------------------

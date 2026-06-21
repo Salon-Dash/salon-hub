@@ -6,12 +6,14 @@ import com.booksy.timeoff.repository.TimeOffRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -20,6 +22,7 @@ import java.util.List;
 public class TimeOffService {
 
     private final TimeOffRepository repository;
+    private final JdbcTemplate jdbc;
 
     public List<TimeOffResponseDto> getByStaffAndDateRange(Long staffId, LocalDate start, LocalDate end) {
         return repository.findByStaffIdAndEndDateGreaterThanEqualAndStartDateLessThanEqual(staffId, start, end)
@@ -43,6 +46,11 @@ public class TimeOffService {
 
     @Transactional
     public TimeOffItemDto create(CreateTimeOffRequest req) {
+        // Check for existing confirmed appointments that conflict with this time-off block.
+        // Both services share the same booksy_platform database, so a direct JDBC query is safe.
+        checkForAppointmentConflicts(req.staffId(), req.startDate(), req.endDate(),
+                req.startTime(), req.endTime(), req.isFullDay());
+
         TimeOff t = new TimeOff();
         t.setBusinessId(req.businessId());
         t.setStaffId(req.staffId());
@@ -57,6 +65,56 @@ public class TimeOffService {
         t.setRecurrenceEndDate(req.recurrenceEndDate());
         t.setApproved(true);
         return toItemDto(repository.save(t));
+    }
+
+    /**
+     * Verifies that no non-cancelled appointments exist for the given staff member within the
+     * proposed time-off window. Throws 409 CONFLICT if any overlap is found.
+     *
+     * <p>Both the time-off-service and the booking-service share the same {@code booksy_platform}
+     * PostgreSQL database, so a direct JdbcTemplate query against the {@code appointments} table
+     * is used instead of a cross-service HTTP call.</p>
+     */
+    private void checkForAppointmentConflicts(Long staffId,
+                                               LocalDate startDate, LocalDate endDate,
+                                               LocalTime startTime, LocalTime endTime,
+                                               boolean fullDay) {
+        if (staffId == null || startDate == null || endDate == null) {
+            return; // insufficient data — skip check
+        }
+
+        Integer conflictCount;
+        if (fullDay || startTime == null || endTime == null) {
+            // Full-day block: any non-cancelled appointment on any day in the range conflicts
+            conflictCount = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM appointments " +
+                    "WHERE staff_id = ? " +
+                    "  AND appointment_date BETWEEN ? AND ? " +
+                    "  AND status NOT IN ('CANCELLED')",
+                    Integer.class,
+                    staffId, startDate, endDate);
+            if (conflictCount != null && conflictCount > 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Staff has " + conflictCount + " confirmed appointment(s) on the blocked day(s). " +
+                        "Cancel them first.");
+            }
+        } else {
+            // Partial-day block: check for appointments whose time window overlaps [startTime, endTime]
+            conflictCount = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM appointments " +
+                    "WHERE staff_id = ? " +
+                    "  AND appointment_date BETWEEN ? AND ? " +
+                    "  AND status NOT IN ('CANCELLED') " +
+                    "  AND start_time < ? AND end_time > ?",
+                    Integer.class,
+                    staffId, startDate, endDate, endTime, startTime);
+            if (conflictCount != null && conflictCount > 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Staff has " + conflictCount + " confirmed appointment(s) during this time block. " +
+                        "Cancel them first.");
+            }
+        }
+        log.debug("No appointment conflicts found for staffId={} between {} and {}", staffId, startDate, endDate);
     }
 
     @Transactional

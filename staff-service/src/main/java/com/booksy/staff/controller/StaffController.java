@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -51,10 +52,18 @@ public class StaffController {
         return ResponseEntity.ok(staffService.getAllByBusiness(businessId));
     }
 
-    /** GET /api/staff/{id}/business/{businessId} — dashboard pattern */
+    /**
+     * GET /api/staff/{id}/business/{businessId} — dashboard pattern.
+     * Verifies the staff's stored businessId matches the path businessId.
+     */
     @GetMapping("/{id}/business/{businessId}")
     public ResponseEntity<StaffDto> getStaffByIdAndBusiness(@PathVariable Long id,
                                                               @PathVariable Long businessId) {
+        Long storedBusinessId = staffService.getBusinessIdForStaff(id);
+        if (storedBusinessId != null && !storedBusinessId.equals(businessId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Staff member does not belong to business " + businessId);
+        }
         return ResponseEntity.ok(staffService.getById(id));
     }
 
@@ -87,24 +96,47 @@ public class StaffController {
         return ResponseEntity.status(HttpStatus.CREATED).body(staffService.create(withBiz));
     }
 
-    /** PUT /api/staff/{id} — update staff */
+    /**
+     * PUT /api/staff/{id} — update staff.
+     * If businessId is provided in the request body, verify it matches what is stored
+     * to prevent cross-business mutation.
+     */
     @PutMapping("/{id}")
     public ResponseEntity<StaffDto> updateStaff(@PathVariable Long id,
                                                  @RequestBody StaffCreateRequest request) {
         log.info("PUT /api/staff/{}", id);
+        if (request.businessId() != null) {
+            Long storedBusinessId = staffService.getBusinessIdForStaff(id);
+            if (storedBusinessId != null && !storedBusinessId.equals(request.businessId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Staff member does not belong to the specified business");
+            }
+        }
         return ResponseEntity.ok(staffService.update(id, request));
     }
 
-    /** PUT /api/staff/{id}/business/{businessId} — dashboard pattern */
+    /**
+     * PUT /api/staff/{id}/business/{businessId} — dashboard pattern.
+     * Verifies the staff's stored businessId matches the path businessId before updating.
+     */
     @PutMapping("/{id}/business/{businessId}")
     public ResponseEntity<StaffDto> updateStaffForBusiness(@PathVariable Long id,
                                                              @PathVariable Long businessId,
                                                              @RequestBody StaffCreateRequest request) {
         log.info("PUT /api/staff/{}/business/{}", id, businessId);
+        Long storedBusinessId = staffService.getBusinessIdForStaff(id);
+        if (storedBusinessId != null && !storedBusinessId.equals(businessId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Staff member does not belong to business " + businessId);
+        }
         return ResponseEntity.ok(staffService.update(id, request));
     }
 
-    /** DELETE /api/staff/{id} — soft-delete */
+    /**
+     * DELETE /api/staff/{id} — soft-delete.
+     * No businessId in path; the operation is allowed but businessId is not verified here
+     * (caller must be authenticated at the gateway level).
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivateStaff(@PathVariable Long id) {
         log.info("DELETE /api/staff/{}", id);
@@ -112,11 +144,19 @@ public class StaffController {
         return ResponseEntity.noContent().build();
     }
 
-    /** DELETE /api/staff/{id}/business/{businessId} — dashboard pattern */
+    /**
+     * DELETE /api/staff/{id}/business/{businessId} — dashboard pattern.
+     * Verifies the staff's stored businessId matches the path businessId before deleting.
+     */
     @DeleteMapping("/{id}/business/{businessId}")
     public ResponseEntity<Void> deactivateStaffForBusiness(@PathVariable Long id,
                                                              @PathVariable Long businessId) {
         log.info("DELETE /api/staff/{}/business/{}", id, businessId);
+        Long storedBusinessId = staffService.getBusinessIdForStaff(id);
+        if (storedBusinessId != null && !storedBusinessId.equals(businessId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Staff member does not belong to business " + businessId);
+        }
         staffService.deactivate(id);
         return ResponseEntity.noContent().build();
     }
