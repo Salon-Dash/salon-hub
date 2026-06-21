@@ -84,7 +84,7 @@ public class SalesController {
         List<Map<String, Object>> sales = jdbc.queryForList(sql, params.toArray());
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> s : sales) {
-            result.add(buildSaleResponse(s));
+            result.add(buildSaleResponse(List.of(s)));
         }
         return result;
     }
