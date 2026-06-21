@@ -249,7 +249,11 @@ services:
       <<: *common-env
       SERVER_PORT: 8090
       SPRING_FLYWAY_TABLE: flyway_history_notification
+      # Disable optional health indicators so Redis/SMTP timeouts don't cause DOWN
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      MANAGEMENT_HEALTH_REDIS_ENABLED: "false"
+      EUREKA_CLIENT_HEALTHCHECK_ENABLED: "false"
+      # JVM uses -XX:+UseContainerSupport -XX:MaxRAMPercentage=75 → 288m heap with 384m limit
       NOTIFICATION_EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -267,7 +271,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256m
+          memory: 384m
 
   payment-service:
     image: ghcr.io/salon-dash/salon-hub/payment-service:${IMAGE_TAG:-latest}

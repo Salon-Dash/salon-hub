@@ -20,7 +20,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none   # validate causes slow cold starts; Flyway owns schema management
     show-sql: false
     properties:
       hibernate:
@@ -65,6 +65,13 @@ management:
     web:
       exposure:
         include: health,info,metrics
+  health:
+    redis:
+      enabled: false   # Redis is optional — don't let it drag health to DOWN
+    mail:
+      enabled: false   # SMTP health check can time out and cause false DOWN
+    defaults:
+      enabled: true
 
 eureka:
   client:
@@ -73,7 +80,7 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
     healthcheck:
-      enabled: true
+      enabled: false  # Don't let Eureka connectivity affect Docker health check result
     initial-instance-info-replication-interval-seconds: 5
     instance-info-replication-interval-seconds: 10
   instance:
