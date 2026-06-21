@@ -1,48 +1,37 @@
-# Dockerfile for booking-service
-# Generated automatically - edit as needed
-
-FROM maven:3.9-eclipse-temurin-17 AS build
+# ── Stage 1: Dependency pre-fetch (standard Maven — fast, cached layer) ──────
+FROM maven:3.9-eclipse-temurin-17 AS deps
 WORKDIR /app
-
-# Copy parent POM first (for dependency management)
 COPY pom.xml ./pom.xml
-
-# Install parent POM to local repository (required for child modules)
-RUN mvn install -N -B || true
-
-# Copy service POM
+RUN mvn install -N -B -q
 COPY booking-service/pom.xml ./booking-service/pom.xml
+RUN mvn dependency:go-offline -f booking-service/pom.xml -B -q || true
 
-
-
-# Download dependencies (cached layer)
-RUN mvn dependency:go-offline -f booking-service/pom.xml -B || true
-
-# Copy service source code
-COPY booking-service/src ./booking-service/src
-
-# Build application
-RUN mvn clean package -f booking-service/pom.xml -DskipTests -B
-
-# Runtime stage
-FROM eclipse-temurin:17-jre-alpine
-
+# ── Stage 2: GraalVM native-image compilation (~8-15 min) ────────────────────
+FROM ghcr.io/graalvm/native-image-community:17-ol8 AS build
 WORKDIR /app
+RUN microdnf install -y findutils wget tar gzip && \
+    wget -q -O /tmp/maven.tar.gz \
+        https://archive.apache.org/dist/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz && \
+    tar -xzf /tmp/maven.tar.gz -C /opt && rm /tmp/maven.tar.gz && \
+    ln -s /opt/apache-maven-3.9.6/bin/mvn /usr/local/bin/mvn
+COPY --from=deps /root/.m2 /root/.m2
+COPY pom.xml ./pom.xml
+RUN mvn install -N -B -q
+COPY booking-service/pom.xml ./booking-service/pom.xml
+COPY booking-service/src ./booking-service/src
+RUN mvn -Pnative native:compile -f booking-service/pom.xml -DskipTests -B
 
-# Copy JAR from build stage
-COPY --from=build /app/booking-service/target/*.jar app.jar
-
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
-
-EXPOSE 8080
-
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+# ── Stage 3: Minimal runtime (~25 MB Debian, no JVM) ─────────────────────────
+FROM debian:12-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates wget libstdc++6 zlib1g && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd --system appgroup && useradd --system --gid appgroup appuser
+WORKDIR /app
+COPY --from=build /app/booking-service/target/booking-service ./booking-service
+RUN chmod +x ./booking-service && chown appuser:appgroup ./booking-service
 USER appuser
-
-ENTRYPOINT ["java", \
-    "-XX:+UseContainerSupport", \
-    "-XX:MaxRAMPercentage=75.0", \
-    "-Djava.security.egd=file:/dev/./urandom", \
-    "-jar", "app.jar"]
+HEALTHCHECK --interval=20s --timeout=3s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8084/actuator/health || exit 1
+EXPOSE 8084
+ENTRYPOINT ["./booking-service"]
