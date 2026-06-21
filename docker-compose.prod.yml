@@ -197,7 +197,8 @@ services:
       SERVER_PORT: 8086
       SPRING_FLYWAY_TABLE: flyway_history_staff
       # Xmx120 + 100 meta + 80 native = 300m limit
-      JAVA_TOOL_OPTIONS: "-Xmx120m -Xms48m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
+      # JPA + WebFlux client. Xmx130 + meta128 + 92 native = 350m
+      JAVA_TOOL_OPTIONS: "-Xmx130m -Xms52m -XX:MaxMetaspaceSize=128m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -209,7 +210,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300m
+          memory: 350m
 
   service-catalog-service:
     image: ghcr.io/salon-dash/salon-hub/service-catalog-service:${IMAGE_TAG:-latest}
@@ -218,8 +219,8 @@ services:
       <<: *common-env
       SERVER_PORT: 8087
       SPRING_FLYWAY_TABLE: flyway_history_catalog
-      # Xmx110 + 100 meta + 80 native = 290m limit
-      JAVA_TOOL_OPTIONS: "-Xmx110m -Xms44m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
+      # 5 JPA repos + Hibernate 6 needs ~120m metaspace. Xmx130 + meta128 + 92 native = 350m
+      JAVA_TOOL_OPTIONS: "-Xmx130m -Xms52m -XX:MaxMetaspaceSize=128m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -231,7 +232,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 290m
+          memory: 350m
 
   business-hours-service:
     image: ghcr.io/salon-dash/salon-hub/business-hours-service:${IMAGE_TAG:-latest}
@@ -241,8 +242,8 @@ services:
       SERVER_PORT: 8088
       SPRING_FLYWAY_TABLE: flyway_history_biz_hours
       SPRING_CACHE_TYPE: redis
-      # Xmx100 + 100 meta + 80 native = 280m limit
-      JAVA_TOOL_OPTIONS: "-Xmx100m -Xms40m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
+      # JPA + Redis cache. Xmx110 + meta128 + 92 native = 330m
+      JAVA_TOOL_OPTIONS: "-Xmx110m -Xms44m -XX:MaxMetaspaceSize=128m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -254,7 +255,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 280m
+          memory: 330m
 
   time-off-service:
     image: ghcr.io/salon-dash/salon-hub/time-off-service:${IMAGE_TAG:-latest}
@@ -263,8 +264,8 @@ services:
       <<: *common-env
       SERVER_PORT: 8089
       SPRING_FLYWAY_TABLE: flyway_history_timeoff
-      # Xmx100 + 100 meta + 80 native = 280m limit
-      JAVA_TOOL_OPTIONS: "-Xmx100m -Xms40m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
+      # JPA service. Xmx110 + meta128 + 92 native = 330m
+      JAVA_TOOL_OPTIONS: "-Xmx110m -Xms44m -XX:MaxMetaspaceSize=128m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -276,7 +277,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 280m
+          memory: 330m
 
   notification-service:
     image: ghcr.io/salon-dash/salon-hub/notification-service:${IMAGE_TAG:-latest}
