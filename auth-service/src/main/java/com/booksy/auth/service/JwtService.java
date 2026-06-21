@@ -33,9 +33,9 @@ public class JwtService {
     /**
      * Generates a signed JWT access token.
      * Subject is the user's email (matching booking-service's claims.getSubject() usage).
-     * Claims include "role" and "userId" as expected by all downstream services.
+     * Claims include "role", "userId", and "businessId" as expected by all downstream services.
      */
-    public String generateAccessToken(String email, String role, Long userId) {
+    public String generateAccessToken(String email, String role, Long userId, Long businessId) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtExpirationMs);
 
@@ -43,6 +43,7 @@ public class JwtService {
                 .subject(email)
                 .claim("role", role)
                 .claim("userId", userId)
+                .claim("businessId", businessId != null ? businessId : 0)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(getSigningKey())

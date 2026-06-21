@@ -67,7 +67,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@authRateLimiter}"
                 key-resolver: "#{@ipKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Salon Onboarding Service — authenticated API limit (60 req/s per user)
@@ -80,7 +80,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Availability Service — authenticated API limit
@@ -93,7 +93,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Booking Service — authenticated API limit
@@ -106,7 +106,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Customer mobile app endpoints — authenticated customer routes
@@ -119,7 +119,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Staff Service — authenticated API limit
@@ -132,7 +132,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Shifts (staff-level scheduling) — routed to staff-service
@@ -145,7 +145,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Client Service — routed to booking-service (client data extracted from appointments)
@@ -158,7 +158,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Service Catalog Service — authenticated API limit
@@ -171,7 +171,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Business Hours Service — authenticated API limit
@@ -184,7 +184,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Time Off Service — authenticated API limit
@@ -197,7 +197,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Sales — routed to booking-service (sales = appointments + payments)
@@ -210,7 +210,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Payment Confirmation — routed to booking-service (creates sale + updates appointment)
@@ -223,7 +223,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Payment Service (commissions, payments) — authenticated API limit
@@ -236,7 +236,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Auth Service (Public Auth APIs) — routes /api/public/auth/** to auth-service
@@ -250,7 +250,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@authRateLimiter}"
                 key-resolver: "#{@ipKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Booking Service (Public Availability APIs - must come before general studios route)
@@ -263,7 +263,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@publicRateLimiter}"
                 key-resolver: "#{@ipKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Service Catalog (Public studio services) — must come before the general studios route
@@ -276,7 +276,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@publicRateLimiter}"
                 key-resolver: "#{@ipKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Business Service (Public Studio APIs) — public limit (20 req/s per IP)
@@ -289,7 +289,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@publicRateLimiter}"
                 key-resolver: "#{@ipKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Booking Service (Public Booking APIs) — public limit
@@ -304,7 +304,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@publicRateLimiter}"
                 key-resolver: "#{@ipKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Staff Service (Public Staff APIs) — public limit
@@ -317,7 +317,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@publicRateLimiter}"
                 key-resolver: "#{@ipKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Appointments - routed to booking-service (rewrite path from /appointments to /bookings)
@@ -331,7 +331,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # WebSocket - routed to booking-service (handles WebSocket connections)
@@ -354,7 +354,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Referral Service — authenticated API limit
@@ -367,7 +367,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Invitation Service — authenticated API limit
@@ -380,7 +380,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Notification Service — authenticated API limit
@@ -393,7 +393,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
 
         # Analytics — routed to booking-service (analytics derived from appointments table)
@@ -406,7 +406,7 @@ spring:
               args:
                 redis-rate-limiter: "#{@apiRateLimiter}"
                 key-resolver: "#{@userKeyResolver}"
-                deny-empty-key: false
+                deny-empty-key: true
                 empty-key-status-code: 429
       globalcors:
         cors-configurations:
@@ -415,7 +415,6 @@ spring:
               - "http://localhost:5173"
               - "http://localhost:3000"
               - "https://salon-hub-omega.vercel.app"
-              - "https://*.vercel.app"
               - "http://187.124.190.92"
               - "http://${VPS_IP:187.124.190.92}"
             allowedMethods:

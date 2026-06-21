@@ -46,6 +46,10 @@ public class ServiceCatalogService {
 
     @Transactional
     public ServiceDto createService(ServiceCreateRequest req) {
+        if (req.price() != null && req.price().compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Price cannot be negative");
+        }
         ServiceEntity entity = new ServiceEntity();
         entity.setBusinessId(req.businessId());
         entity.setCategoryId(req.categoryId());
@@ -72,6 +76,10 @@ public class ServiceCatalogService {
         if (req.name() != null) entity.setName(req.name());
         if (req.description() != null) entity.setDescription(req.description());
         if (req.durationMinutes() != null) entity.setDuration(req.durationMinutes());
+        if (req.price() != null && req.price().compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Price cannot be negative");
+        }
         if (req.price() != null) entity.setPrice(req.price());
         if (req.categoryId() != null) entity.setCategoryId(req.categoryId());
         entity.setUpdatedAt(LocalDateTime.now());

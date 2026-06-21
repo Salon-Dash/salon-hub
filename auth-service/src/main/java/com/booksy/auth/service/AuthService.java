@@ -14,7 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 
 @Slf4j
 @Service
@@ -104,7 +107,8 @@ public class AuthService {
     public AuthResponse refresh(String refreshTokenValue) {
         log.info("Refresh token exchange requested");
 
-        RefreshToken storedToken = refreshTokenRepository.findByToken(refreshTokenValue)
+        // DB stores only the hash; compare against the hash of the incoming raw token
+        RefreshToken storedToken = refreshTokenRepository.findByToken(hashToken(refreshTokenValue))
                 .orElseThrow(() -> {
                     log.warn("Refresh token not found in DB");
                     return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
@@ -169,7 +173,8 @@ public class AuthService {
     @Transactional
     public void logout(String refreshTokenValue) {
         log.info("Logout — revoking refresh token");
-        refreshTokenRepository.findByToken(refreshTokenValue)
+        // DB stores only the hash; look up by hash of the incoming raw token
+        refreshTokenRepository.findByToken(hashToken(refreshTokenValue))
                 .ifPresentOrElse(
                         token -> {
                             refreshTokenRepository.delete(token);
@@ -184,7 +189,8 @@ public class AuthService {
     // -------------------------------------------------------------------------
 
     private AuthResponse buildAuthResponse(User user) {
-        String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getRole(), user.getId());
+        // businessId is not yet stored on the User entity; pass null so JWT carries 0 until that field is added
+        String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getRole(), user.getId(), null);
         String refreshTokenValue = issueRefreshToken(user.getId());
         String fullName = user.getFirstName() + " " + user.getLastName();
 
@@ -205,12 +211,26 @@ public class AuthService {
 
         RefreshToken refreshToken = RefreshToken.builder()
                 .userId(userId)
-                .token(tokenValue)
+                .token(hashToken(tokenValue))  // store only the SHA-256 hash, never the raw value
                 .expiresAt(expiresAt)
                 .build();
 
         refreshTokenRepository.save(refreshToken);
         log.info("Issued new refresh token for userId [{}], expires at [{}]", userId, expiresAt);
-        return tokenValue;
+        return tokenValue;  // return the raw token to the client
+    }
+
+    /**
+     * Returns the SHA-256 hex digest of the given token string.
+     * Used to avoid storing raw refresh tokens in the database.
+     */
+    private String hashToken(String token) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to hash token", e);
+        }
     }
 }
