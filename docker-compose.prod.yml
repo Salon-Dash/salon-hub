@@ -5,6 +5,9 @@ x-common-env: &common-env
   SPRING_DATASOURCE_USERNAME: ${DB_USER:-booksy}
   SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
   SPRING_DATA_REDIS_HOST: redis
+  # Short Redis connection timeout — fail fast instead of blocking health checks for 60s
+  SPRING_DATA_REDIS_TIMEOUT: "2000"
+  SPRING_DATA_REDIS_LETTUCE_SHUTDOWN_TIMEOUT: "100"
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
   JWT_SECRET: ${JWT_SECRET}
   SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
@@ -14,6 +17,9 @@ x-common-env: &common-env
   SPRING_JPA_OPEN_IN_VIEW: "false"
   # Eureka: 15s local cache so gateway doesn't hit Eureka on every request
   EUREKA_CLIENT_REGISTRY_FETCH_INTERVAL_SECONDS: "15"
+  # Disable Redis from actuator/health — Redis is optional for most services.
+  # Without this, a Redis blip makes EVERY service report DOWN and Docker restarts them.
+  MANAGEMENT_HEALTH_REDIS_ENABLED: "false"
 
 # Shared JVM flags — capped metaspace + string deduplication for all JPA services
 # Formula: container limit = Xmx + MaxMetaspaceSize(100m) + native overhead(80m)
@@ -54,7 +60,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
+    restart: always
     command: redis-server --save "" --appendonly no --maxmemory 80mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
