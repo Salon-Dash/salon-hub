@@ -71,11 +71,15 @@ export const appointmentService = {
     return apiClient.get<Appointment[]>(`/appointments/staff/${staffId}?${params.toString()}`);
   },
 
-  async createAppointment(request: CreateAppointmentRequest): Promise<Appointment> {
-    const idempotencyKey = `${request.businessId}-${request.staffId}-${request.appointmentDate}-${request.startTime}-${Date.now()}`;
+  async createAppointment(request: CreateAppointmentRequest & { idempotencyKey?: string }): Promise<Appointment> {
+    // idempotencyKey must be generated BEFORE the form submit (when form opens),
+    // not here at call time — so retries reuse the same key.
+    // If caller doesn't provide one, fall back to a time+random key (single-use, not retry-safe).
+    const key = request.idempotencyKey
+      ?? `${request.businessId}-${request.staffId}-${request.appointmentDate}-${request.startTime}-${Date.now()}-${Math.random()}`;
     return apiClient.post<Appointment>('/appointments', {
       ...request,
-      idempotencyKey,
+      idempotencyKey: key,
     });
   },
 

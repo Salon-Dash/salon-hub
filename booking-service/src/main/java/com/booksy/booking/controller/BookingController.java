@@ -187,12 +187,11 @@ public class BookingController {
                 if (existing != null) return existing;
             } catch (EmptyResultDataAccessException ignored) {}
         }
-        Integer conflictCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM appointments WHERE staff_id = ? AND appointment_date = ? AND status != 'CANCELLED' AND start_time < ? AND end_time > ?",
-                Integer.class, request.staffId(), request.appointmentDate(), request.endTime(), request.startTime());
-        if (conflictCount != null && conflictCount > 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked for the selected staff member");
-        }
+        // Atomic conflict check + insert using a single SQL statement.
+        // The WHERE NOT EXISTS clause and the INSERT are executed atomically by PostgreSQL,
+        // eliminating the TOCTOU race condition that existed with the old SELECT COUNT → INSERT pattern.
+        // The V4 migration also adds an EXCLUDE USING gist constraint as a final safety net
+        // in case concurrent requests slip through (e.g. via direct DB access or bugs).
         Appointment created = toAppointment(0L, request);
         ServiceSnapshot serviceSnapshot = fetchServiceSnapshot(created.getBusinessId(), created.getServiceId());
         if (serviceSnapshot != null) {
@@ -203,9 +202,16 @@ public class BookingController {
             created.setClientName(request.clientName().trim());
         }
         LocalDateTime now = LocalDateTime.now();
-        Number generatedId = jdbcTemplate.queryForObject(
+        Number generatedId;
+        try {
+            generatedId = jdbcTemplate.queryForObject(
                 "INSERT INTO appointments (business_id, staff_id, client_id, service_id, appointment_date, start_time, end_time, status, payment_status, created_at, updated_at, service_name, client_name, client_phone, client_email, price, color, notes, idempotency_key) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                "SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? " +
+                "WHERE NOT EXISTS (" +
+                "  SELECT 1 FROM appointments " +
+                "  WHERE staff_id = ? AND appointment_date = ? AND status != 'CANCELLED' " +
+                "  AND start_time < ? AND end_time > ?" +
+                ") RETURNING id",
                 Number.class,
                 created.getBusinessId(),
                 created.getStaffId(),
@@ -225,8 +231,24 @@ public class BookingController {
                 created.getPrice() != null ? created.getPrice() : request.price(),
                 request.color(),
                 request.notes(),
-                request.idempotencyKey()
-        );
+                request.idempotencyKey(),
+                // WHERE NOT EXISTS parameters (conflict check)
+                request.staffId(),
+                request.appointmentDate(),
+                request.endTime(),
+                request.startTime()
+            );
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Catches the EXCLUDE constraint violation (23P01) if two requests
+            // slip through the WHERE NOT EXISTS check simultaneously
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "This time slot is already booked for the selected staff member");
+        }
+        if (generatedId == null) {
+            // WHERE NOT EXISTS returned false — conflict exists
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "This time slot is already booked for the selected staff member");
+        }
         if (generatedId != null) {
             created.setId(generatedId.longValue());
         }

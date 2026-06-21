@@ -544,6 +544,8 @@ export default function CalendarPage() {
     notes: "",
     price: "",
     date: format(currentDate, 'yyyy-MM-dd'),
+    // Generated when form opens — stable across retries for the same booking attempt
+    idempotencyKey: `booking-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   });
   const [serviceSearchOpen, setServiceSearchOpen] = useState(false);
 
@@ -1983,7 +1985,7 @@ export default function CalendarPage() {
                     setIsNewAppointmentOpen(false);
                     setEditingAppointmentId(null);
                     setFinalSelection(null);
-                    setAppointmentForm({ clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd') });
+                    setAppointmentForm({ clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd'), idempotencyKey: `booking-${Date.now()}-${Math.random().toString(36).slice(2)}` });
                     toast.success("Appointment created successfully (with conflict)");
                   } catch (error) {
                     toast.error("Failed to create appointment");
@@ -2048,7 +2050,7 @@ export default function CalendarPage() {
                     setIsNewAppointmentOpen(false);
                     setEditingAppointmentId(null);
                     setFinalSelection(null);
-                    setAppointmentForm({ clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd') });
+                    setAppointmentForm({ clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd'), idempotencyKey: `booking-${Date.now()}-${Math.random().toString(36).slice(2)}` });
                     toast.success("Appointment created successfully");
                   } catch (error) {
                     toast.error("Failed to create appointment");
@@ -2528,9 +2530,11 @@ export default function CalendarPage() {
                     clientEmail: appointmentForm.clientEmail || undefined,
                     price: selectedService?.price,
                     notes: appointmentForm.notes || undefined,
+                    // Key generated when form opened — stable across retries for this booking attempt
+                    idempotencyKey: appointmentForm.idempotencyKey,
                   };
 
-                  const EMPTY_FORM = { clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd') };
+                  const EMPTY_FORM = { clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd'), idempotencyKey: `booking-${Date.now()}-${Math.random().toString(36).slice(2)}` };
 
                   if (hasTimeOffConflictResult) {
                     setPendingAppointmentWithTimeOffData(appointmentData);
