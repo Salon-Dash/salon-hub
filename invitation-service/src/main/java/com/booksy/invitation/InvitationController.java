@@ -1,13 +1,11 @@
 package com.booksy.invitation;
 
-import jakarta.annotation.PostConstruct;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -18,29 +16,6 @@ public class InvitationController {
 
     public InvitationController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
-    }
-
-    @PostConstruct
-    void ensureSchema() {
-        jdbc.execute("""
-            CREATE TABLE IF NOT EXISTS invitations (
-                id            BIGSERIAL PRIMARY KEY,
-                business_id   BIGINT       NOT NULL,
-                client_email  VARCHAR(255),
-                client_name   VARCHAR(255),
-                referral_code VARCHAR(100) UNIQUE,
-                status        VARCHAR(20)  DEFAULT 'PENDING',
-                invited_by    BIGINT,
-                message       TEXT,
-                created_at    TIMESTAMP    DEFAULT NOW(),
-                expires_at    TIMESTAMP,
-                sent_at       TIMESTAMP,
-                accepted_at   TIMESTAMP
-            )
-            """);
-        jdbc.execute("CREATE INDEX IF NOT EXISTS idx_invitations_business_id ON invitations(business_id)");
-        jdbc.execute("CREATE INDEX IF NOT EXISTS idx_invitations_referral_code ON invitations(referral_code)");
-        jdbc.execute("CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(client_email)");
     }
 
     /** GET /api/invitations/business/{businessId} */

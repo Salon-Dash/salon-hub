@@ -73,7 +73,7 @@ services:
       SERVER_PORT: 8761
       SPRING_MAIN_LAZY_INITIALIZATION: "true"
       # Xmx80 + 100 meta + 80 native = 260m limit
-      JAVA_TOOL_OPTIONS: "-Xmx80m -Xms32m *jpa-jvm*"
+      JAVA_TOOL_OPTIONS: "-Xmx80m -Xms32m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -333,27 +333,31 @@ services:
     image: ghcr.io/salon-dash/salon-hub/invitation-service:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      <<: *common-env
+      # Native binary — no JVM, no JAVA_TOOL_OPTIONS needed
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/booksy_platform
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-booksy}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SERVER_PORT: 8091
       SPRING_FLYWAY_TABLE: flyway_history_invitation
-      # Disable JPA/Hibernate — this service only uses JdbcTemplate (saves ~50MB metaspace)
-      SPRING_AUTOCONFIGURE_EXCLUDE: >-
-        org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,
-        org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
-      # Xmx80 + 60 meta (no Hibernate) + 80 native = 220m limit
-      JAVA_TOOL_OPTIONS: "-Xmx80m -Xms32m -XX:MaxMetaspaceSize=60m -XX:+UseStringDeduplication -XX:+UseG1GC"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "0"
     depends_on:
       postgres:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
     healthcheck:
+      # Native starts in ~100ms — no need for 120s start_period
       test: ["CMD-SHELL", "wget -qO- http://localhost:8091/actuator/health > /dev/null || exit 1"]
-      <<: *spring-healthcheck
+      interval: 20s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
     deploy:
       resources:
         limits:
-          memory: 220m
+          memory: 64m
 
   referral-service:
     image: ghcr.io/salon-dash/salon-hub/referral-service:${IMAGE_TAG:-latest}
