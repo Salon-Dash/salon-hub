@@ -24,8 +24,9 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
-                // Public booking creation — gateway rewrites /api/public/bookings → /api/bookings
-                .requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
+                // Customer app uses /api/public/bookings (gateway rewrites) via CustomerBookingController
+                // Direct POST /api/bookings is for authenticated dashboard users only
+                .requestMatchers(HttpMethod.POST, "/api/bookings").authenticated()
                 // Customer app endpoints require a valid CUSTOMER JWT (handled by JwtAuthFilter)
                 .requestMatchers("/api/customer/**").authenticated()
                 .requestMatchers("/ws/**").permitAll()

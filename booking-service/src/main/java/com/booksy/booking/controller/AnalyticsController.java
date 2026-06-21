@@ -45,20 +45,38 @@ public class AnalyticsController {
     public Map<String, Object> getOverview(
             @PathVariable int businessId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "UTC") String timezone) {
 
-        LocalDate start = resolveStart(startDate);
-        LocalDate end = resolveEnd(endDate);
+        java.time.ZoneId tz;
+        try { tz = java.time.ZoneId.of(timezone); } catch (Exception e) { tz = java.time.ZoneId.of("UTC"); }
+        LocalDate start = startDate != null ? startDate : LocalDate.now(tz).minusDays(30);
+        LocalDate end = endDate != null ? endDate : LocalDate.now(tz);
         LocalDate prevStart = start.minusDays(ChronoUnit.DAYS.between(start, end) + 1);
         LocalDate prevEnd = start.minusDays(1);
 
-        // Current period totals
-        Map<String, Object> current = jdbc.queryForMap(
+        // Try sales table first for accurate revenue (includes discounts/tips)
+        // Fall back to appointments.price if no sales data exists
+        Map<String, Object> current;
+        try {
+            current = jdbc.queryForMap(
+                "SELECT COALESCE(SUM(s.total),0) AS total_revenue, " +
+                "COUNT(DISTINCT a.id) AS total_bookings, " +
+                "COUNT(DISTINCT LOWER(COALESCE(a.client_email, a.client_name, ''))) FILTER (WHERE COALESCE(a.client_email, a.client_name) IS NOT NULL) AS new_clients, " +
+                "COALESCE(AVG(s.total),0) AS average_ticket " +
+                "FROM appointments a " +
+                "LEFT JOIN sales s ON s.appointment_id = a.id " +
+                "WHERE a.business_id = ? AND a.appointment_date BETWEEN ? AND ? AND a.status != 'CANCELLED'",
+                businessId, start, end);
+        } catch (Exception e) {
+            // Fall back to appointments.price if sales table join fails
+            current = jdbc.queryForMap(
                 "SELECT COALESCE(SUM(price),0) AS total_revenue, COUNT(*) AS total_bookings, " +
                 "COUNT(DISTINCT LOWER(COALESCE(client_name,''))) FILTER (WHERE client_name IS NOT NULL) AS new_clients, " +
                 "COALESCE(AVG(price),0) AS average_ticket " +
                 "FROM appointments WHERE business_id = ? AND appointment_date BETWEEN ? AND ? AND status != 'CANCELLED'",
                 businessId, start, end);
+        }
 
         // Previous period totals (for change %)
         Map<String, Object> prev = jdbc.queryForMap(
@@ -117,10 +135,13 @@ public class AnalyticsController {
     public Map<String, Object> getRevenue(
             @PathVariable int businessId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "UTC") String timezone) {
 
-        LocalDate start = resolveStart(startDate);
-        LocalDate end = resolveEnd(endDate);
+        java.time.ZoneId tz;
+        try { tz = java.time.ZoneId.of(timezone); } catch (Exception e) { tz = java.time.ZoneId.of("UTC"); }
+        LocalDate start = startDate != null ? startDate : LocalDate.now(tz).minusDays(30);
+        LocalDate end = endDate != null ? endDate : LocalDate.now(tz);
 
         Map<String, Object> totals = jdbc.queryForMap(
                 "SELECT COALESCE(SUM(price),0) AS total_revenue, COALESCE(AVG(price),0) AS avg_daily_revenue, " +
@@ -166,10 +187,13 @@ public class AnalyticsController {
     public Map<String, Object> getBookings(
             @PathVariable int businessId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "UTC") String timezone) {
 
-        LocalDate start = resolveStart(startDate);
-        LocalDate end = resolveEnd(endDate);
+        java.time.ZoneId tz;
+        try { tz = java.time.ZoneId.of(timezone); } catch (Exception e) { tz = java.time.ZoneId.of("UTC"); }
+        LocalDate start = startDate != null ? startDate : LocalDate.now(tz).minusDays(30);
+        LocalDate end = endDate != null ? endDate : LocalDate.now(tz);
 
         Map<String, Object> totals = jdbc.queryForMap(
                 "SELECT COUNT(*) AS total, " +
@@ -229,15 +253,18 @@ public class AnalyticsController {
     public Map<String, Object> getClients(
             @PathVariable int businessId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "UTC") String timezone) {
 
-        LocalDate start = resolveStart(startDate);
-        LocalDate end = resolveEnd(endDate);
+        java.time.ZoneId tz;
+        try { tz = java.time.ZoneId.of(timezone); } catch (Exception e) { tz = java.time.ZoneId.of("UTC"); }
+        LocalDate start = startDate != null ? startDate : LocalDate.now(tz).minusDays(30);
+        LocalDate end = endDate != null ? endDate : LocalDate.now(tz);
 
         Map<String, Object> totals = jdbc.queryForMap(
                 "SELECT " +
-                "COUNT(DISTINCT LOWER(COALESCE(client_name,''))) FILTER (WHERE client_name IS NOT NULL AND appointment_date BETWEEN ? AND ?) AS total_clients, " +
-                "COUNT(DISTINCT LOWER(COALESCE(client_name,''))) FILTER (WHERE client_name IS NOT NULL AND appointment_date < ?) AS returning_base " +
+                "COUNT(DISTINCT COALESCE(LOWER(client_email), LOWER(client_name), '')) FILTER (WHERE COALESCE(client_email, client_name) IS NOT NULL AND appointment_date BETWEEN ? AND ?) AS total_clients, " +
+                "COUNT(DISTINCT COALESCE(LOWER(client_email), LOWER(client_name), '')) FILTER (WHERE COALESCE(client_email, client_name) IS NOT NULL AND appointment_date < ?) AS returning_base " +
                 "FROM appointments WHERE business_id = ? AND status != 'CANCELLED' AND appointment_date BETWEEN ? AND ?",
                 start, end, start, businessId, start, end);
 
@@ -276,10 +303,13 @@ public class AnalyticsController {
     public Map<String, Object> getServices(
             @PathVariable int businessId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "UTC") String timezone) {
 
-        LocalDate start = resolveStart(startDate);
-        LocalDate end = resolveEnd(endDate);
+        java.time.ZoneId tz;
+        try { tz = java.time.ZoneId.of(timezone); } catch (Exception e) { tz = java.time.ZoneId.of("UTC"); }
+        LocalDate start = startDate != null ? startDate : LocalDate.now(tz).minusDays(30);
+        LocalDate end = endDate != null ? endDate : LocalDate.now(tz);
 
         List<Map<String, Object>> servicePerf = jdbc.queryForList(
                 "SELECT service_id AS \"serviceId\", COALESCE(service_name,'Unknown') AS \"serviceName\", '' AS \"categoryName\", " +

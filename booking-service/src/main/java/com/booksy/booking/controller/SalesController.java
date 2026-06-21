@@ -162,9 +162,39 @@ public class SalesController {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) body.getOrDefault("items", List.of());
         double subtotal = items.stream().mapToDouble(i -> toDouble(i.get("unitPrice")) * toInt(i.get("quantity"))).sum();
+        // Validate that client-supplied subtotal matches computed subtotal
+        Object requestedSubtotal = body.get("subtotal");
+        if (requestedSubtotal != null) {
+            double clientSubtotal = toDouble(requestedSubtotal);
+            if (Math.abs(clientSubtotal - subtotal) > 0.01) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Subtotal " + clientSubtotal + " does not match items sum " + subtotal);
+            }
+        }
         double discountAmount = toDouble(body.get("discountAmount"));
+        if (discountAmount > subtotal + 0.01) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Discount amount " + discountAmount + " cannot exceed subtotal " + subtotal);
+        }
         double tipAmount = toDouble(body.get("tipAmount"));
         double total = subtotal - discountAmount + tipAmount;
+        // Validate split payment amounts
+        String paymentMethod = body.getOrDefault("paymentMethod", "CASH").toString();
+        if ("SPLIT".equals(paymentMethod)) {
+            double splitCash = toDouble(body.get("splitCashAmount"));
+            double splitCard = toDouble(body.get("splitCardAmount"));
+            if (Math.abs(splitCash + splitCard - total) > 0.01) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Split amounts (" + splitCash + " + " + splitCard + ") must sum to total (" + total + ")");
+            }
+        }
+
+        Long appointmentIdForSale = null;
+        Object appointmentIdRaw = body.get("appointmentId");
+        if (appointmentIdRaw != null) {
+            try { appointmentIdForSale = Long.parseLong(appointmentIdRaw.toString()); } catch (Exception ignored) {}
+        }
+        final Long finalAppointmentIdForSale = appointmentIdForSale;
 
         Long saleId;
         try {
@@ -172,19 +202,20 @@ public class SalesController {
                     "INSERT INTO sales (business_id, staff_id, client_id, client_name, client_phone, client_email, " +
                     "sale_date, sale_time, subtotal, discount_amount, discount_percent, tip_amount, tip_percent, " +
                     "total, payment_method, payment_amount, change_amount, split_cash_amount, split_card_amount, " +
-                    "status, notes, bill_number, bill_id, created_at, updated_at) " +
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'COMPLETED',?,?,?,?,?) RETURNING id",
+                    "status, notes, bill_number, bill_id, appointment_id, created_at, updated_at) " +
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'COMPLETED',?,?,?,?,?,?) RETURNING id",
                     Long.class,
                     businessId, toIntOrNull(body.get("staffId")), toIntOrNull(body.get("clientId")),
                     body.get("clientName"), body.get("clientPhone"), body.get("clientEmail"),
                     saleDate, saleTime, subtotal, discountAmount,
                     toDouble(body.get("discountPercent")), tipAmount,
                     toDouble(body.get("tipPercent")), total,
-                    body.getOrDefault("paymentMethod", "CASH").toString(),
+                    paymentMethod,
                     toDouble(body.get("paymentAmount")), toDouble(body.get("changeAmount")),
                     toDoubleOrNull(body.get("splitCashAmount")), toDoubleOrNull(body.get("splitCardAmount")),
                     body.get("notes"),
                     "BILL-" + System.currentTimeMillis(), UUID.randomUUID().toString(),
+                    finalAppointmentIdForSale,
                     Timestamp.valueOf(now), Timestamp.valueOf(now));
         } catch (Exception e) {
             // sales table may not exist — create one and retry
@@ -201,7 +232,7 @@ public class SalesController {
                     saleDate, saleTime, subtotal, discountAmount,
                     toDouble(body.get("discountPercent")), tipAmount,
                     toDouble(body.get("tipPercent")), total,
-                    body.getOrDefault("paymentMethod", "CASH").toString(),
+                    paymentMethod,
                     toDouble(body.get("paymentAmount")), toDouble(body.get("changeAmount")),
                     toDoubleOrNull(body.get("splitCashAmount")), toDoubleOrNull(body.get("splitCardAmount")),
                     body.get("notes"),
@@ -224,6 +255,14 @@ public class SalesController {
                         qty, unitPrice, unitPrice * qty,
                         item.get("duration"), item.get("notes"));
             }
+        }
+
+        // Sync payment status back to the appointment if appointmentId is provided
+        if (finalAppointmentIdForSale != null) {
+            try {
+                jdbc.update("UPDATE appointments SET payment_status = 'PAID', updated_at = NOW() WHERE id = ?",
+                    finalAppointmentIdForSale);
+            } catch (Exception ignored) { /* Non-fatal — appointment may not exist or be linked */ }
         }
 
         return getSaleById(saleId);

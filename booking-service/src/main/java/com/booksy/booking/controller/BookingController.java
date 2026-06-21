@@ -157,6 +157,36 @@ public class BookingController {
         if (request.appointmentDate() == null || request.startTime() == null || request.endTime() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "appointmentDate, startTime, and endTime are required");
         }
+        // Validate time order
+        if (request.startTime() != null && request.endTime() != null
+                && !request.startTime().isBefore(request.endTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime must be before endTime");
+        }
+        // Validate appointment date is not in the past
+        if (request.appointmentDate() != null && request.appointmentDate().isBefore(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot create bookings in the past");
+        }
+        // Validate email format
+        if (request.clientEmail() != null && !request.clientEmail().isBlank()
+                && !request.clientEmail().matches("^[^@]+@[^@]+\\.[^@]+$")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid client email format");
+        }
+        // Validate field lengths
+        if (request.clientName() != null && request.clientName().length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "clientName exceeds 255 characters");
+        }
+        if (request.notes() != null && request.notes().length() > 2000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "notes exceeds 2000 characters");
+        }
+        // Idempotency: return existing booking if same key was already processed
+        if (request.idempotencyKey() != null && !request.idempotencyKey().isBlank()) {
+            try {
+                Appointment existing = jdbcTemplate.queryForObject(
+                    APPOINTMENT_SELECT + " FROM appointments WHERE idempotency_key = ?",
+                    appointmentRowMapper, request.idempotencyKey());
+                if (existing != null) return existing;
+            } catch (EmptyResultDataAccessException ignored) {}
+        }
         Integer conflictCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM appointments WHERE staff_id = ? AND appointment_date = ? AND status != 'CANCELLED' AND start_time < ? AND end_time > ?",
                 Integer.class, request.staffId(), request.appointmentDate(), request.endTime(), request.startTime());
@@ -174,8 +204,8 @@ public class BookingController {
         }
         LocalDateTime now = LocalDateTime.now();
         Number generatedId = jdbcTemplate.queryForObject(
-                "INSERT INTO appointments (business_id, staff_id, client_id, service_id, appointment_date, start_time, end_time, status, payment_status, created_at, updated_at, service_name, client_name, client_phone, client_email, price, color, notes) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                "INSERT INTO appointments (business_id, staff_id, client_id, service_id, appointment_date, start_time, end_time, status, payment_status, created_at, updated_at, service_name, client_name, client_phone, client_email, price, color, notes, idempotency_key) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
                 Number.class,
                 created.getBusinessId(),
                 created.getStaffId(),
@@ -194,7 +224,8 @@ public class BookingController {
                 request.clientEmail(),
                 created.getPrice() != null ? created.getPrice() : request.price(),
                 request.color(),
-                request.notes()
+                request.notes(),
+                request.idempotencyKey()
         );
         if (generatedId != null) {
             created.setId(generatedId.longValue());
@@ -223,6 +254,16 @@ public class BookingController {
         if (existing == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found: " + bookingId);
         }
+        // Validate time order
+        if (request.startTime() != null && request.endTime() != null
+                && !request.startTime().isBefore(request.endTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime must be before endTime");
+        }
+        // Validate email format
+        if (request.clientEmail() != null && !request.clientEmail().isBlank()
+                && !request.clientEmail().matches("^[^@]+@[^@]+\\.[^@]+$")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid client email format");
+        }
         // Conflict check (exclude the current booking from the check)
         Integer conflictCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM appointments WHERE staff_id = ? AND appointment_date = ? AND status != 'CANCELLED' AND id != ? AND start_time < ? AND end_time > ?",
@@ -233,10 +274,17 @@ public class BookingController {
         Appointment updated = toAppointment(bookingId, request);
         // Preserve the existing status unless explicitly provided in the request
         updated.setStatus(existing.getStatus());
-        ServiceSnapshot serviceSnapshot = fetchServiceSnapshot(updated.getBusinessId(), updated.getServiceId());
-        if (serviceSnapshot != null) {
-            updated.setServiceName(serviceSnapshot.name());
-            updated.setPrice(serviceSnapshot.price());
+        // Only update service snapshot if the service changed
+        if (request.serviceId() != existing.getServiceId()) {
+            ServiceSnapshot serviceSnapshot = fetchServiceSnapshot(updated.getBusinessId(), updated.getServiceId());
+            if (serviceSnapshot != null) {
+                updated.setServiceName(serviceSnapshot.name());
+                updated.setPrice(serviceSnapshot.price());
+            }
+        } else {
+            // Preserve the original booked price and service name
+            updated.setServiceName(existing.getServiceName());
+            updated.setPrice(existing.getPrice());
         }
         if (request.clientName() != null && !request.clientName().isBlank()) {
             updated.setClientName(request.clientName().trim());
@@ -430,7 +478,7 @@ public class BookingController {
     private void publishAppointmentUpdate(Appointment appointment) {
         if (appointment == null) return;
         messagingTemplate.convertAndSend("/topic/appointments/" + appointment.getBusinessId(), appointment);
-        messagingTemplate.convertAndSend("/topic/appointments/staff/" + appointment.getStaffId(), appointment);
+        messagingTemplate.convertAndSend("/topic/appointments/" + appointment.getBusinessId() + "/staff/" + appointment.getStaffId(), appointment);
     }
 
     private Appointment toAppointment(long id, BookingRequest request) {
@@ -463,7 +511,8 @@ public class BookingController {
             String clientEmail,
             Double price,
             String color,
-            String notes
+            String notes,
+            String idempotencyKey   // ADD THIS
     ) {}
 
     private record ServiceSnapshot(String name, BigDecimal price) {}
