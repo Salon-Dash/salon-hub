@@ -199,29 +199,35 @@ export function useAppointments(businessIdParam?: number, date?: Date) {
 
     const setupWebSocket = async () => {
       try {
-        console.log('🔍 [useAppointments] Checking for WebSocket libraries...');
-        console.log('  - SockJS available:', !!(window as any).SockJS);
-        console.log('  - STOMP available:', !!(window as any).Stomp);
-        
-        // Wait for WebSocket libraries to load if needed
+        // Small delay: let the page finish its initial render before opening a
+        // WebSocket. Without this, fast navigation or React StrictMode double-invoke
+        // causes the cleanup to run while SockJS is mid-handshake →
+        // "WebSocket is closed before the connection is established".
+        await new Promise(resolve => setTimeout(resolve, 300));
+        if (!isMounted) return;
+
+        // Wait for WebSocket libraries to load
         let retries = 0;
-        const maxRetries = 10;
+        const maxRetries = 20;
         while (!(window as any).SockJS || !(window as any).Stomp) {
+          if (!isMounted) return; // abort if unmounted while waiting
           if (retries >= maxRetries) {
-            console.error('❌ [useAppointments] WebSocket libraries not loaded after retries. WebSocket features disabled.');
+            console.warn('[useAppointments] WebSocket libraries not loaded — real-time updates disabled');
             return;
           }
-          console.log(`⏳ [useAppointments] Waiting for WebSocket libraries... (${retries + 1}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, 100));
           retries++;
         }
 
-        console.log('✅ [useAppointments] WebSocket libraries loaded, connecting...');
+        if (!isMounted) return;
         setWebsocketStatus('connecting');
         await websocketService.connect();
-        
+
+        // Critical: check mount status immediately after the async connect.
+        // If the component unmounted during the SockJS handshake, disconnect
+        // cleanly and bail — otherwise we'd subscribe to a zombie connection.
         if (!isMounted) {
-          console.warn('⚠️ [useAppointments] Component unmounted during connection');
+          websocketService.disconnect();
           return;
         }
         
@@ -289,6 +295,12 @@ export function useAppointments(businessIdParam?: number, date?: Date) {
       isMounted = false;
       if (unsubscribe) {
         unsubscribe();
+      }
+      // If cleanup runs while websocketService.connect() is still in flight
+      // (e.g. fast navigation, StrictMode), disconnect to close the SockJS socket.
+      // This prevents "WebSocket closed before connection established" errors.
+      if (websocketService.isConnected() === false) {
+        websocketService.disconnect();
       }
     };
   }, [businessId, date, playIncomingBookingSound]); // Include date in dependencies to re-subscribe when date changes

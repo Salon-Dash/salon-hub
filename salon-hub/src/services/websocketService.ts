@@ -205,7 +205,7 @@ class WebSocketService {
     if (manual) {
       this.isManualDisconnect = true;
     }
-    
+
     // Stop heartbeat monitoring
     this.stopHeartbeatMonitoring();
 
@@ -213,27 +213,28 @@ class WebSocketService {
     if (this.stompClient) {
       try {
         if (manual) {
-          // Manual disconnect - properly close the connection
           this.stompClient.disconnect(() => {
             console.log('WebSocket disconnected');
           });
         }
-        // For both manual and cleanup, null the reference
         this.stompClient = null;
       } catch (error) {
-        // Ignore errors during cleanup - connection might already be closed
         this.stompClient = null;
       }
     }
 
-    // Close socket
+    // Always close the underlying socket — not just on manual disconnect.
+    // Leaving it open causes "WebSocket is closed before connection established"
+    // when React cleanup runs mid-handshake (StrictMode, fast navigation).
     if (this.socket) {
       try {
-        if (manual && (this.socket as any).readyState === WebSocket.OPEN) {
-          (this.socket as any).close(1000, 'Manual disconnect');
+        const readyState = (this.socket as any).readyState;
+        // CONNECTING=0, OPEN=1 — close both; CLOSING=2 and CLOSED=3 are already handled
+        if (readyState === 0 || readyState === 1) {
+          (this.socket as any).close(1000, manual ? 'Manual disconnect' : 'Cleanup');
         }
       } catch (error) {
-        // Ignore errors - socket might already be closed
+        // Ignore — socket may already be gone
       }
       this.socket = null;
     }
