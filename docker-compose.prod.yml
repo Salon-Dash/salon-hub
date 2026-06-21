@@ -7,10 +7,17 @@ x-common-env: &common-env
   SPRING_DATA_REDIS_HOST: redis
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
   JWT_SECRET: ${JWT_SECRET}
-  # Flyway: each service uses its own history table so shared 'public' schema
-  # doesn't cause checksum conflicts between services
   SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
   SPRING_FLYWAY_BASELINE_VERSION: "0"
+  # Lazy bean init — defers class loading, saves 20-40MB idle RAM per service
+  SPRING_MAIN_LAZY_INITIALIZATION: "true"
+  SPRING_JPA_OPEN_IN_VIEW: "false"
+  # Eureka: 15s local cache so gateway doesn't hit Eureka on every request
+  EUREKA_CLIENT_REGISTRY_FETCH_INTERVAL_SECONDS: "15"
+
+# Shared JVM flags — capped metaspace + string deduplication for all JPA services
+# Formula: container limit = Xmx + MaxMetaspaceSize(100m) + native overhead(80m)
+x-jpa-jvm: &jpa-jvm "-XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC -XX:MaxGCPauseMillis=100"
 
 x-spring-healthcheck: &spring-healthcheck
   interval: 30s
@@ -26,14 +33,13 @@ services:
       POSTGRES_DB: booksy_platform
       POSTGRES_USER: ${DB_USER:-booksy}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      # Limit shared_buffers to 96MB (default is 128MB, too high for small VPS)
-      POSTGRES_INITDB_ARGS: ""
     command: >
       postgres
         -c shared_buffers=96MB
         -c effective_cache_size=256MB
-        -c max_connections=100
+        -c max_connections=80
         -c work_mem=4MB
+        -c maintenance_work_mem=32MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -44,12 +50,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384m
+          memory: 320m
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --save "" --appendonly no
+    command: redis-server --save "" --appendonly no --maxmemory 80mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -58,14 +64,16 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128m
+          memory: 96m
 
   eureka-server:
     image: ghcr.io/salon-dash/salon-hub/eureka-server:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       SERVER_PORT: 8761
-      JAVA_TOOL_OPTIONS: "-Xmx120m -Xms48m"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
+      # Xmx80 + 100 meta + 80 native = 260m limit
+      JAVA_TOOL_OPTIONS: "-Xmx80m -Xms32m *jpa-jvm*"
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,7 +83,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 220m
+          memory: 260m
 
   api-gateway:
     image: ghcr.io/salon-dash/salon-hub/api-gateway:${IMAGE_TAG:-latest}
@@ -86,9 +94,8 @@ services:
       <<: *common-env
       SERVER_PORT: 8080
       EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
-      JAVA_TOOL_OPTIONS: "-Xmx180m -Xms72m"
-      # Disable Spring Security auto-config — gateway is a transparent proxy.
-      # Each downstream service enforces its own JWT auth.
+      # Xmx160 + 100 meta + 80 native = 340m limit
+      JAVA_TOOL_OPTIONS: "-Xmx160m -Xms64m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
       SPRING_AUTOCONFIGURE_EXCLUDE: >-
         org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration,
         org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration
@@ -103,7 +110,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 280m
+          memory: 340m
 
   auth-service:
     image: ghcr.io/salon-dash/salon-hub/auth-service:${IMAGE_TAG:-latest}
@@ -112,7 +119,8 @@ services:
       <<: *common-env
       SERVER_PORT: 8082
       SPRING_FLYWAY_TABLE: flyway_history_auth
-      JAVA_TOOL_OPTIONS: "-Xmx160m -Xms64m"
+      # Xmx140 + 100 meta + 80 native = 320m limit
+      JAVA_TOOL_OPTIONS: "-Xmx140m -Xms56m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -124,7 +132,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256m
+          memory: 320m
 
   booking-service:
     image: ghcr.io/salon-dash/salon-hub/booking-service:${IMAGE_TAG:-latest}
@@ -136,7 +144,8 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
       SERVICES_NOTIFICATION_URL: http://notification-service:8090
-      JAVA_TOOL_OPTIONS: "-Xmx320m -Xms128m"
+      # Xmx300 + 100 meta + 80 native = 480m limit (largest service — most logic)
+      JAVA_TOOL_OPTIONS: "-Xmx300m -Xms100m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -150,7 +159,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 448m
+          memory: 480m
 
   business-service:
     image: ghcr.io/salon-dash/salon-hub/business-service:${IMAGE_TAG:-latest}
@@ -159,7 +168,8 @@ services:
       <<: *common-env
       SERVER_PORT: 8085
       SPRING_FLYWAY_TABLE: flyway_history_business
-      JAVA_TOOL_OPTIONS: "-Xmx160m -Xms64m"
+      # Xmx120 + 100 meta + 80 native = 300m limit
+      JAVA_TOOL_OPTIONS: "-Xmx120m -Xms48m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -171,7 +181,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256m
+          memory: 300m
 
   staff-service:
     image: ghcr.io/salon-dash/salon-hub/staff-service:${IMAGE_TAG:-latest}
@@ -180,7 +190,8 @@ services:
       <<: *common-env
       SERVER_PORT: 8086
       SPRING_FLYWAY_TABLE: flyway_history_staff
-      JAVA_TOOL_OPTIONS: "-Xmx160m -Xms64m"
+      # Xmx120 + 100 meta + 80 native = 300m limit
+      JAVA_TOOL_OPTIONS: "-Xmx120m -Xms48m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -192,7 +203,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 320m
+          memory: 300m
 
   service-catalog-service:
     image: ghcr.io/salon-dash/salon-hub/service-catalog-service:${IMAGE_TAG:-latest}
@@ -201,7 +212,8 @@ services:
       <<: *common-env
       SERVER_PORT: 8087
       SPRING_FLYWAY_TABLE: flyway_history_catalog
-      JAVA_TOOL_OPTIONS: "-Xmx140m -Xms56m"
+      # Xmx110 + 100 meta + 80 native = 290m limit
+      JAVA_TOOL_OPTIONS: "-Xmx110m -Xms44m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -213,7 +225,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 230m
+          memory: 290m
 
   business-hours-service:
     image: ghcr.io/salon-dash/salon-hub/business-hours-service:${IMAGE_TAG:-latest}
@@ -223,7 +235,8 @@ services:
       SERVER_PORT: 8088
       SPRING_FLYWAY_TABLE: flyway_history_biz_hours
       SPRING_CACHE_TYPE: redis
-      JAVA_TOOL_OPTIONS: "-Xmx120m -Xms48m"
+      # Xmx100 + 100 meta + 80 native = 280m limit
+      JAVA_TOOL_OPTIONS: "-Xmx100m -Xms40m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -235,7 +248,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 210m
+          memory: 280m
 
   time-off-service:
     image: ghcr.io/salon-dash/salon-hub/time-off-service:${IMAGE_TAG:-latest}
@@ -244,7 +257,8 @@ services:
       <<: *common-env
       SERVER_PORT: 8089
       SPRING_FLYWAY_TABLE: flyway_history_timeoff
-      JAVA_TOOL_OPTIONS: "-Xmx120m -Xms48m"
+      # Xmx100 + 100 meta + 80 native = 280m limit
+      JAVA_TOOL_OPTIONS: "-Xmx100m -Xms40m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -256,7 +270,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 210m
+          memory: 280m
 
   notification-service:
     image: ghcr.io/salon-dash/salon-hub/notification-service:${IMAGE_TAG:-latest}
@@ -265,11 +279,11 @@ services:
       <<: *common-env
       SERVER_PORT: 8090
       SPRING_FLYWAY_TABLE: flyway_history_notification
-      # Disable optional health indicators so Redis/SMTP timeouts don't cause DOWN
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
       MANAGEMENT_HEALTH_REDIS_ENABLED: "false"
       EUREKA_CLIENT_HEALTHCHECK_ENABLED: "false"
-      JAVA_TOOL_OPTIONS: "-Xmx200m -Xms80m"
+      # Xmx160 + 100 meta + 80 native = 340m limit
+      JAVA_TOOL_OPTIONS: "-Xmx160m -Xms64m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
       NOTIFICATION_EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -287,7 +301,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384m
+          memory: 340m
 
   payment-service:
     image: ghcr.io/salon-dash/salon-hub/payment-service:${IMAGE_TAG:-latest}
@@ -296,7 +310,12 @@ services:
       <<: *common-env
       SERVER_PORT: 8095
       SPRING_FLYWAY_TABLE: flyway_history_payment
-      JAVA_TOOL_OPTIONS: "-Xmx110m -Xms44m"
+      # Disable JPA/Hibernate — this service only uses JdbcTemplate (saves ~50MB metaspace)
+      SPRING_AUTOCONFIGURE_EXCLUDE: >-
+        org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,
+        org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+      # Xmx80 + 60 meta (no Hibernate) + 80 native = 220m limit
+      JAVA_TOOL_OPTIONS: "-Xmx80m -Xms32m -XX:MaxMetaspaceSize=60m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -308,7 +327,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 200m
+          memory: 220m
 
   invitation-service:
     image: ghcr.io/salon-dash/salon-hub/invitation-service:${IMAGE_TAG:-latest}
@@ -317,7 +336,12 @@ services:
       <<: *common-env
       SERVER_PORT: 8091
       SPRING_FLYWAY_TABLE: flyway_history_invitation
-      JAVA_TOOL_OPTIONS: "-Xmx110m -Xms44m"
+      # Disable JPA/Hibernate — this service only uses JdbcTemplate (saves ~50MB metaspace)
+      SPRING_AUTOCONFIGURE_EXCLUDE: >-
+        org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,
+        org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+      # Xmx80 + 60 meta (no Hibernate) + 80 native = 220m limit
+      JAVA_TOOL_OPTIONS: "-Xmx80m -Xms32m -XX:MaxMetaspaceSize=60m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -329,7 +353,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 200m
+          memory: 220m
 
   referral-service:
     image: ghcr.io/salon-dash/salon-hub/referral-service:${IMAGE_TAG:-latest}
@@ -338,7 +362,12 @@ services:
       <<: *common-env
       SERVER_PORT: 8092
       SPRING_FLYWAY_TABLE: flyway_history_referral
-      JAVA_TOOL_OPTIONS: "-Xmx100m -Xms40m"
+      # Disable JPA/Hibernate — stub service (saves ~50MB metaspace)
+      SPRING_AUTOCONFIGURE_EXCLUDE: >-
+        org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,
+        org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+      # Xmx64 + 60 meta (no Hibernate) + 76 native = 200m limit
+      JAVA_TOOL_OPTIONS: "-Xmx64m -Xms28m -XX:MaxMetaspaceSize=60m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -350,7 +379,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 190m
+          memory: 200m
 
 volumes:
   postgres_data:
