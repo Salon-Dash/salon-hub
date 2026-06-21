@@ -5,6 +5,7 @@ import com.booksy.timeoff.model.TimeOff;
 import com.booksy.timeoff.repository.TimeOffRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,11 @@ import java.util.List;
 public class TimeOffService {
 
     private final TimeOffRepository repository;
-    private final JdbcTemplate jdbc;
+
+    // Optional — only available when spring-boot-starter-jdbc is on the classpath.
+    // Used for cross-table conflict checks against the shared appointments table.
+    @Autowired(required = false)
+    private JdbcTemplate jdbc;
 
     public List<TimeOffResponseDto> getByStaffAndDateRange(Long staffId, LocalDate start, LocalDate end) {
         return repository.findByStaffIdAndEndDateGreaterThanEqualAndStartDateLessThanEqual(staffId, start, end)
@@ -79,8 +84,8 @@ public class TimeOffService {
                                                LocalDate startDate, LocalDate endDate,
                                                LocalTime startTime, LocalTime endTime,
                                                boolean fullDay) {
-        if (staffId == null || startDate == null || endDate == null) {
-            return; // insufficient data — skip check
+        if (jdbc == null || staffId == null || startDate == null || endDate == null) {
+            return; // JdbcTemplate not available or insufficient data — skip check
         }
 
         Integer conflictCount;
