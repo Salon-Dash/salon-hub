@@ -71,4 +71,4 @@ eureka:
 
 # Tenant ownership authorization: pathPrefix:table pairs for resource-by-id lookups
 tenant:
-  mappings: "/api/time-off:time_off"
+  mappings: "/api/time-off:time_off,/api/time-off/staff:staff"

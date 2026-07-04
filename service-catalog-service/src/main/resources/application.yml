@@ -85,4 +85,4 @@ eureka:
 
 # Tenant ownership authorization: pathPrefix:table pairs for resource-by-id lookups
 tenant:
-  mappings: "/api/services:services,/api/categories:categories,/api/addons:addons"
+  mappings: "/api/services:services,/api/categories:categories,/api/addons:addons,/api/services/category:categories"
