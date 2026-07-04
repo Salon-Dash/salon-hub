@@ -105,3 +105,7 @@ push:
   provider: ${PUSH_PROVIDER:fcm}
   fcm:
     server-key: ${FCM_SERVER_KEY:}
+
+# Tenant ownership authorization: pathPrefix:table pairs for resource-by-id lookups
+tenant:
+  mappings: "/api/notifications/booking:appointments"

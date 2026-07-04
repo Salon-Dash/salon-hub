@@ -102,4 +102,6 @@ eureka:
     status-page-url-path: /actuator/info
     instance-id: ${spring.application.name}:${server.port}
 
-
+# Tenant ownership authorization: pathPrefix:table pairs for resource-by-id lookups
+tenant:
+  mappings: "/api/commissions:commissions,/api/commission-rules:commission_rules"
