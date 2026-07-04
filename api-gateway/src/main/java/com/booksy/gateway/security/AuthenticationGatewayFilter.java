@@ -54,12 +54,17 @@ public class AuthenticationGatewayFilter implements GlobalFilter, Ordered {
     }
 
     /** Routes reachable without authentication. */
-    private boolean isPublic(String path) {
-        return path.startsWith("/api/auth/")
+    private boolean isPublic(String method, String path) {
+        boolean alwaysPublic = path.startsWith("/api/auth/")
                 || path.startsWith("/api/public/")
                 || path.startsWith("/ws")
                 || path.startsWith("/actuator/")
                 || path.equals("/actuator/health");
+        if (alwaysPublic) return true;
+        // Business hours are public salon info that the customer app displays while
+        // browsing; only reads are open — writes stay owner-authenticated.
+        if ("GET".equalsIgnoreCase(method) && path.startsWith("/api/business-hours/")) return true;
+        return false;
     }
 
     @Override
@@ -74,7 +79,7 @@ public class AuthenticationGatewayFilter implements GlobalFilter, Ordered {
             h.remove(USER_EMAIL_HEADER);
         });
 
-        if (isPublic(path)) {
+        if (isPublic(incoming.getMethod().name(), path)) {
             return chain.filter(exchange.mutate().request(builder.build()).build());
         }
 

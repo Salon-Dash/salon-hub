@@ -56,10 +56,29 @@ public class TenantAuthorizationFilter extends OncePerRequestFilter {
     @Value("${tenant.mappings:}")
     private String mappingsRaw;
 
+    /**
+     * Comma-separated path prefixes that are customer-scoped rather than tenant-owned
+     * (e.g. "/api/customer"). Requests to these are authorized by the controller using
+     * the caller's own identity — a customer legitimately books at a business they do
+     * NOT own, so the businessId in the request must not be treated as a tenant they
+     * must own. Ownership checks are skipped for these prefixes.
+     */
+    @Value("${tenant.exempt-prefixes:}")
+    private String exemptRaw;
+
     private final List<String[]> mappings = new ArrayList<>();
 
     public TenantAuthorizationFilter(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
+    }
+
+    private boolean isExempt(String path) {
+        if (exemptRaw == null || exemptRaw.isBlank()) return false;
+        for (String prefix : exemptRaw.split(",")) {
+            String p = prefix.trim();
+            if (!p.isEmpty() && path.startsWith(p)) return true;
+        }
+        return false;
     }
 
     private List<String[]> mappings() {
@@ -81,6 +100,13 @@ public class TenantAuthorizationFilter extends OncePerRequestFilter {
 
         // No identity → gateway let it through as public, or an internal call. Not ours to gate.
         if (userIdHeader == null || userIdHeader.isBlank()) {
+            chain.doFilter(request, response);
+            return;
+        }
+        // Customer-scoped endpoints authorize by the caller's own identity in the
+        // controller (a customer books at a business they do not own), so tenant
+        // ownership does not apply here.
+        if (isExempt(request.getRequestURI())) {
             chain.doFilter(request, response);
             return;
         }

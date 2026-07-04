@@ -115,3 +115,5 @@ stripe:
 # Tenant ownership authorization: pathPrefix:table pairs for resource-by-id lookups
 tenant:
   mappings: "/api/bookings:appointments,/api/appointments:appointments,/api/clients:clients,/api/sales:sales,/api/bookings/staff:staff"
+  # Customer-facing endpoints scope by the customer's own identity, not tenant ownership
+  exempt-prefixes: "/api/customer"
