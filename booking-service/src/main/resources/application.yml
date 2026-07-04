@@ -111,3 +111,7 @@ services:
 stripe:
   secret-key: ${STRIPE_SECRET_KEY:}
   enabled: ${STRIPE_ENABLED:false}
+
+# Tenant ownership authorization: pathPrefix:table pairs for resource-by-id lookups
+tenant:
+  mappings: "/api/bookings:appointments,/api/appointments:appointments,/api/clients:clients,/api/sales:sales"

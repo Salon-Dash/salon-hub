@@ -57,3 +57,6 @@ management:
     health:
       show-details: when-authorized
 
+# Tenant ownership authorization: pathPrefix:table pairs for resource-by-id lookups
+tenant:
+  mappings: "/api/businesses:@self"
