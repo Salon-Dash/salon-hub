@@ -238,6 +238,13 @@ public class BookingController {
                 request.endTime(),
                 request.startTime()
             );
+        } catch (EmptyResultDataAccessException e) {
+            // The WHERE NOT EXISTS conflict check matched, so the INSERT wrote 0
+            // rows and RETURNING id produced no result. queryForObject signals that
+            // by throwing here (it never returns null), so this is the normal
+            // "slot already taken" path — map it to 409, not 500.
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "This time slot is already booked for the selected staff member");
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             // Catches the EXCLUDE constraint violation (23P01) if two requests
             // slip through the WHERE NOT EXISTS check simultaneously
@@ -245,7 +252,8 @@ public class BookingController {
                 "This time slot is already booked for the selected staff member");
         }
         if (generatedId == null) {
-            // WHERE NOT EXISTS returned false — conflict exists
+            // Defensive: queryForObject throws rather than returning null, but keep
+            // this as a safety net in case the JDBC driver ever returns null.
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                 "This time slot is already booked for the selected staff member");
         }

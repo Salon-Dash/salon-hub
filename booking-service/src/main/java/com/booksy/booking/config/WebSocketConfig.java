@@ -23,7 +23,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     "http://localhost:5173",
                     "http://localhost:3000",
                     "https://salon-hub-omega.vercel.app",
-                    "https://*.vercel.app"
+                    "https://*.vercel.app",
+                    // Dashboard served directly from the VPS (nginx) — same origin as /ws.
+                    // Without this the browser SockJS handshake is rejected and realtime
+                    // calendar updates silently stop working on the VPS deployment.
+                    "http://187.124.190.92",
+                    "http://187.124.190.92:*"
                 )
                 .withSockJS();
     }
