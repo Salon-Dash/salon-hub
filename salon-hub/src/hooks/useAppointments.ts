@@ -317,7 +317,7 @@ export function useAppointments(businessIdParam?: number, date?: Date) {
     price?: number;
     color?: string;
     notes?: string;
-  }) => {
+  }, opts?: { silent?: boolean }) => {
     try {
       const apiRequest = {
         businessId,
@@ -337,12 +337,14 @@ export function useAppointments(businessIdParam?: number, date?: Date) {
       const created = await appointmentService.createAppointment(apiRequest);
       const appointmentDate = parse(created.appointmentDate, 'yyyy-MM-dd', new Date());
       const converted = convertAppointment(created, appointmentDate);
-      
+
       setAppointments(prev => [...prev, converted]);
-      toast.success('Appointment created successfully');
+      // In batch/composite bookings (group, recurring, multi-service) the caller
+      // shows a single summary toast, so per-item toasts are suppressed here.
+      if (!opts?.silent) toast.success('Appointment created successfully');
       return converted;
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create appointment');
+      if (!opts?.silent) toast.error(err.message || 'Failed to create appointment');
       throw err;
     }
   }, [businessId]);

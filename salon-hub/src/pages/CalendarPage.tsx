@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, User, Heart, HelpCircle, ArrowRight, Clock, Check, ChevronsUpDown, Layers, Package } from "lucide-react";
+import { X, User, Users, Heart, HelpCircle, Clock, Check, ChevronsUpDown, Layers, Package, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppointments, type Appointment as AppointmentType } from "@/hooks/useAppointments";
 import { useServices } from "@/hooks/useServices";
@@ -136,6 +136,29 @@ function addMinutesToTime(time: string, minutes: number): string {
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
   return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+}
+
+// Expand a recurring booking into concrete dates (yyyy-MM-dd). Capped at 52
+// occurrences so a runaway "count" can never flood the calendar/DB.
+function computeRecurrenceDates(
+  baseDate: string,
+  rec: { frequency: "DAILY" | "WEEKLY" | "MONTHLY"; interval: number; count: number },
+): string[] {
+  const start = parse(baseDate, "yyyy-MM-dd", new Date());
+  if (isNaN(start.getTime())) return [];
+  const n = Math.max(1, Math.min(52, Math.floor(rec.count) || 1));
+  const step = Math.max(1, Math.floor(rec.interval) || 1);
+  const dates: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const d =
+      rec.frequency === "DAILY"
+        ? addDays(start, i * step)
+        : rec.frequency === "WEEKLY"
+          ? addWeeks(start, i * step)
+          : addMonths(start, i * step);
+    dates.push(format(d, "yyyy-MM-dd"));
+  }
+  return dates;
 }
 
 // This will be updated to use dynamic business hours
@@ -455,10 +478,6 @@ export default function CalendarPage() {
     }
     return base;
   };
-  // Placeholder booking fields (Add-ons, "Requested by client", multi-service)
-  // that aren't wired to real behaviour yet. Hidden until implemented so the
-  // form shows no dead controls. Flip on when the features land (phase 2).
-  const SHOW_WIP_BOOKING_FIELDS = false;
   
   // Convert API appointments to component format (with error handling)
   const appointments: AppointmentWithDate[] = (apiAppointments || []).map(convertToComponentAppointment);
@@ -565,6 +584,27 @@ export default function CalendarPage() {
   });
   const [serviceSearchOpen, setServiceSearchOpen] = useState(false);
 
+  // --- Advanced booking modes (composed on top of the single-booking API) ---
+  // 'single' = one client/one service; 'group' = several clients (each with
+  // their own staff + time); 'recurring' = the same booking repeated on a
+  // schedule. Multi-service ("add another service") stacks extra sequential
+  // service lines onto a single/recurring booking.
+  const [bookingMode, setBookingMode] = useState<"single" | "group" | "recurring">("single");
+  const [extraServices, setExtraServices] = useState<Array<{ serviceId: string; staffId: string; startTime: string; endTime: string }>>([]);
+  const [groupMembers, setGroupMembers] = useState<Array<{ clientName: string; clientPhone: string; clientEmail: string; staffId: string; startTime: string }>>([]);
+  const [recurrence, setRecurrence] = useState<{ frequency: "DAILY" | "WEEKLY" | "MONTHLY"; interval: number; count: number }>({ frequency: "WEEKLY", interval: 1, count: 4 });
+  const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
+
+  // Reset advanced-booking state whenever the form closes.
+  useEffect(() => {
+    if (!isNewAppointmentOpen) {
+      setBookingMode("single");
+      setExtraServices([]);
+      setGroupMembers([]);
+      setRecurrence({ frequency: "WEEKLY", interval: 1, count: 4 });
+    }
+  }, [isNewAppointmentOpen]);
+
   // Load clients when form opens
   useEffect(() => {
     if (isNewAppointmentOpen) {
@@ -579,6 +619,116 @@ export default function CalendarPage() {
     } catch (error) {
       console.error("Failed to load clients:", error);
       // Don't show error toast, just log it
+    }
+  };
+
+  // Duration (minutes) for a service id, defaulting to 30 when unknown.
+  const serviceDuration = (serviceId: string): number => {
+    const s = services.find((x) => x.id.toString() === serviceId);
+    return s?.durationMinutes || 30;
+  };
+  const servicePrice = (serviceId: string): number | undefined =>
+    services.find((x) => x.id.toString() === serviceId)?.price;
+  // Fold the "requested by client" flag into notes (no dedicated column yet).
+  const withRequestedFlag = (notes: string, requested: boolean): string | undefined => {
+    const tagged = requested ? ["⭐ Requested by client", notes].filter(Boolean).join(" — ") : notes;
+    return tagged || undefined;
+  };
+
+  // Advanced bookings (group / recurring / multi-service) are composed from the
+  // existing single-booking endpoint — one race-safe request per row — so the
+  // core booking path (with its atomic no-double-booking guard) stays untouched.
+  // Rows whose slot is already taken are skipped and reported, not fatal.
+  const submitAdvancedBooking = async () => {
+    const base = appointmentForm;
+    if (!base.serviceId) {
+      toast.error("Please select a service");
+      return;
+    }
+    type CreateReq = Parameters<typeof createAppointmentAPI>[0];
+    const reqs: CreateReq[] = [];
+    const notes = withRequestedFlag(base.notes, base.requestedByClient);
+
+    if (bookingMode === "group") {
+      // The primary client is member #1; each member gets their own staff + time
+      // and the double-booking guard enforces "one staff, one client at a time".
+      const members = [
+        { clientName: base.clientName, clientPhone: base.clientPhone, clientEmail: base.clientEmail, staffId: base.staffId, startTime: base.startTime },
+        ...groupMembers,
+      ];
+      for (const m of members) {
+        if (!m.staffId || !m.startTime) continue;
+        reqs.push({
+          staffId: parseInt(m.staffId),
+          serviceId: parseInt(base.serviceId),
+          appointmentDate: base.date,
+          startTime: m.startTime,
+          endTime: addMinutesToTime(m.startTime, serviceDuration(base.serviceId)),
+          clientName: m.clientName || undefined,
+          clientPhone: m.clientPhone || undefined,
+          clientEmail: m.clientEmail || undefined,
+          price: servicePrice(base.serviceId),
+          notes,
+        });
+      }
+    } else {
+      // single or recurring: one "visit" = primary service line + any extra
+      // (multi-service) lines, repeated across the recurrence dates.
+      const lines = [
+        { serviceId: base.serviceId, staffId: base.staffId, startTime: base.startTime, endTime: base.endTime },
+        ...extraServices,
+      ];
+      const dates = bookingMode === "recurring" ? computeRecurrenceDates(base.date, recurrence) : [base.date];
+      for (const d of dates) {
+        for (const l of lines) {
+          if (!l.serviceId || !l.staffId || !l.startTime || !l.endTime) continue;
+          reqs.push({
+            staffId: parseInt(l.staffId),
+            serviceId: parseInt(l.serviceId),
+            appointmentDate: d,
+            startTime: l.startTime,
+            endTime: l.endTime,
+            clientName: base.clientName || undefined,
+            clientPhone: base.clientPhone || undefined,
+            clientEmail: base.clientEmail || undefined,
+            price: servicePrice(l.serviceId),
+            notes,
+          });
+        }
+      }
+    }
+
+    if (reqs.length === 0) {
+      toast.error("Nothing to book — please complete the fields");
+      return;
+    }
+
+    setIsBatchSubmitting(true);
+    let created = 0;
+    let skipped = 0;
+    for (const r of reqs) {
+      try {
+        await createAppointmentAPI(r, { silent: true });
+        created++;
+      } catch {
+        skipped++;
+      }
+    }
+    setIsBatchSubmitting(false);
+
+    if (created > 0 && skipped === 0) {
+      toast.success(`${created} appointment${created > 1 ? "s" : ""} created`);
+    } else if (created > 0) {
+      toast.info(`${created} created, ${skipped} skipped (slot already taken)`);
+    } else {
+      toast.error(`No appointments created — ${skipped} slot${skipped > 1 ? "s were" : " was"} already taken`);
+    }
+
+    if (created > 0) {
+      setIsNewAppointmentOpen(false);
+      setEditingAppointmentId(null);
+      setFinalSelection(null);
+      setAppointmentForm({ clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, "yyyy-MM-dd"), requestedByClient: false, idempotencyKey: `booking-${Date.now()}-${Math.random().toString(36).slice(2)}` });
     }
   };
 
@@ -2249,9 +2399,79 @@ export default function CalendarPage() {
               />
             </div>
 
+            {/* Booking mode: single / group / recurring */}
+            <div className="grid grid-cols-3 gap-1.5">
+              {([
+                { key: "single", label: "SINGLE", Icon: User },
+                { key: "group", label: "GROUP", Icon: Users },
+                { key: "recurring", label: "RECURRING", Icon: CalendarIcon },
+              ] as const).map((m) => (
+                <Button
+                  key={m.key}
+                  type="button"
+                  variant={bookingMode === m.key ? "default" : "outline"}
+                  className="h-8 text-xs px-2"
+                  onClick={() => {
+                    setBookingMode(m.key);
+                    if (m.key === "group") setExtraServices([]);
+                  }}
+                >
+                  <m.Icon className="h-3 w-3 mr-1" />
+                  <span className="hidden sm:inline">{m.label}</span>
+                </Button>
+              ))}
+            </div>
+
+            {/* Recurrence config */}
+            {bookingMode === "recurring" && (
+              <div className="space-y-2 rounded-md border border-gray-200 p-2">
+                <Label className="text-xs font-medium">Repeat</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-gray-500">Frequency</Label>
+                    <Select
+                      value={recurrence.frequency}
+                      onValueChange={(v) => setRecurrence(prev => ({ ...prev, frequency: v as "DAILY" | "WEEKLY" | "MONTHLY" }))}
+                    >
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DAILY">Daily</SelectItem>
+                        <SelectItem value="WEEKLY">Weekly</SelectItem>
+                        <SelectItem value="MONTHLY">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-gray-500">Every</Label>
+                    <Input
+                      type="number" min={1} max={12} value={recurrence.interval}
+                      onChange={(e) => setRecurrence(prev => ({ ...prev, interval: Math.max(1, parseInt(e.target.value) || 1) }))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-gray-500">Occurrences</Label>
+                    <Input
+                      type="number" min={1} max={52} value={recurrence.count}
+                      onChange={(e) => setRecurrence(prev => ({ ...prev, count: Math.max(1, Math.min(52, parseInt(e.target.value) || 1)) }))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-500">
+                  {(() => {
+                    const ds = computeRecurrenceDates(appointmentForm.date, recurrence);
+                    return `${ds.length} date${ds.length > 1 ? "s" : ""}: ${ds.slice(0, 3).join(", ")}${ds.length > 3 ? "…" : ""}`;
+                  })()}
+                </p>
+              </div>
+            )}
+
             {/* Service Selection */}
             <div className="space-y-1">
-              <Label className="text-xs">Select service *</Label>
+              <Label className="text-xs">
+                {bookingMode === "group" ? "Service (all members) *" : "Select service *"}
+              </Label>
               <Popover open={serviceSearchOpen} onOpenChange={setServiceSearchOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -2334,21 +2554,6 @@ export default function CalendarPage() {
               </Popover>
             </div>
 
-            {/* Add-ons */}
-            {SHOW_WIP_BOOKING_FIELDS && (
-            <div className="space-y-1">
-              <Label className="text-xs">Add-ons</Label>
-              <div className="relative">
-                <Input
-                  placeholder="Add-ons"
-                  className="pr-8 cursor-pointer h-8 text-xs"
-                  readOnly
-                />
-                <ArrowRight className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
-            )}
-
             {/* Time Selection */}
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
@@ -2394,9 +2599,9 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            {/* Staff Selection */}
+            {/* Staff Selection (in group mode this is member 1's staff) */}
             <div className="space-y-1">
-              <Label className="text-xs">Staff *</Label>
+              <Label className="text-xs">{bookingMode === "group" ? "Staff (member 1) *" : "Staff *"}</Label>
               <Select
                 value={appointmentForm.staffId}
                 onValueChange={(value) => setAppointmentForm(prev => ({ ...prev, staffId: value }))}
@@ -2414,6 +2619,134 @@ export default function CalendarPage() {
               </Select>
             </div>
             
+            {/* Group members — each gets their own staff + time. The primary
+                client above is member 1; add the rest here. */}
+            {bookingMode === "group" && (
+              <div className="space-y-2 rounded-md border border-gray-200 p-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Group members</Label>
+                  <span className="text-[10px] text-gray-500">Primary client = member 1</span>
+                </div>
+                {groupMembers.map((m, i) => (
+                  <div key={i} className="space-y-1 border-t border-gray-100 pt-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-gray-500 w-16 shrink-0">Member {i + 2}</span>
+                      <Input
+                        placeholder="Name"
+                        value={m.clientName}
+                        onChange={(e) => setGroupMembers(prev => prev.map((x, j) => j === i ? { ...x, clientName: e.target.value } : x))}
+                        className="h-8 text-xs flex-1"
+                      />
+                      <Button
+                        type="button" variant="ghost" size="icon" aria-label="Remove member" className="h-7 w-7 shrink-0"
+                        onClick={() => setGroupMembers(prev => prev.filter((_, j) => j !== i))}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-gray-400" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pl-16">
+                      <Select value={m.staffId} onValueChange={(v) => setGroupMembers(prev => prev.map((x, j) => j === i ? { ...x, staffId: v } : x))}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Staff" /></SelectTrigger>
+                        <SelectContent>
+                          {staff.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={m.startTime} onValueChange={(v) => setGroupMembers(prev => prev.map((x, j) => j === i ? { ...x, startTime: v } : x))}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Start" /></SelectTrigger>
+                        <SelectContent>
+                          {timeOptionsWith(m.startTime).map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="pl-16">
+                      <Input
+                        placeholder="Phone (optional)"
+                        value={m.clientPhone}
+                        onChange={(e) => setGroupMembers(prev => prev.map((x, j) => j === i ? { ...x, clientPhone: e.target.value } : x))}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button" variant="outline" className="w-full h-8 text-xs"
+                  onClick={() => setGroupMembers(prev => {
+                    // Default the new member to start right after the previous one
+                    // on the same staff (sequential → no auto-conflict). The user
+                    // can switch to a different staff to run them at the same time.
+                    const last = prev[prev.length - 1];
+                    const prevStart = last?.startTime || appointmentForm.startTime;
+                    const nextStart = prevStart ? addMinutesToTime(prevStart, serviceDuration(appointmentForm.serviceId)) : appointmentForm.endTime;
+                    return [...prev, { clientName: "", clientPhone: "", clientEmail: "", staffId: appointmentForm.staffId, startTime: nextStart }];
+                  })}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> ADD MEMBER
+                </Button>
+              </div>
+            )}
+
+            {/* Extra services (multi-service) — appended after the primary service.
+                Not available in group mode. */}
+            {bookingMode !== "group" && (
+              <div className="space-y-2">
+                {extraServices.map((es, i) => (
+                  <div key={i} className="space-y-1 rounded-md border border-gray-200 p-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[10px] text-gray-500">Extra service {i + 1}</Label>
+                      <Button
+                        type="button" variant="ghost" size="icon" aria-label="Remove service" className="h-7 w-7"
+                        onClick={() => setExtraServices(prev => prev.filter((_, j) => j !== i))}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-gray-400" />
+                      </Button>
+                    </div>
+                    <Select
+                      value={es.serviceId}
+                      onValueChange={(v) => setExtraServices(prev => prev.map((x, j) => {
+                        if (j !== i) return x;
+                        const start = x.startTime || appointmentForm.endTime;
+                        return { ...x, serviceId: v, endTime: start ? addMinutesToTime(start, serviceDuration(v)) : x.endTime };
+                      }))}
+                    >
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Service" /></SelectTrigger>
+                      <SelectContent>
+                        {services.map((s) => (<SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Select value={es.staffId} onValueChange={(v) => setExtraServices(prev => prev.map((x, j) => j === i ? { ...x, staffId: v } : x))}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Staff" /></SelectTrigger>
+                        <SelectContent>
+                          {staff.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={es.startTime} onValueChange={(v) => setExtraServices(prev => prev.map((x, j) => j === i ? { ...x, startTime: v, endTime: addMinutesToTime(v, serviceDuration(x.serviceId)) } : x))}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Start" /></SelectTrigger>
+                        <SelectContent>
+                          {timeOptionsWith(es.startTime).map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={es.endTime} onValueChange={(v) => setExtraServices(prev => prev.map((x, j) => j === i ? { ...x, endTime: v } : x))}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="End" /></SelectTrigger>
+                        <SelectContent>
+                          {timeOptionsWith(es.endTime).map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  type="button" variant="outline" className="w-full h-8 text-xs"
+                  onClick={() => {
+                    const start = appointmentForm.endTime || appointmentForm.startTime;
+                    setExtraServices(prev => [...prev, { serviceId: "", staffId: appointmentForm.staffId, startTime: start, endTime: start ? addMinutesToTime(start, 30) : "" }]);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> ADD ANOTHER SERVICE
+                </Button>
+              </div>
+            )}
+
             {/* Notes */}
             <div className="space-y-1">
               <Label className="text-xs">Notes (optional)</Label>
@@ -2425,47 +2758,45 @@ export default function CalendarPage() {
               />
             </div>
 
-            {/* Client Request */}
-            {SHOW_WIP_BOOKING_FIELDS && (
+            {/* Requested by client */}
             <div className="flex items-center gap-1.5 py-0.5">
-              <Button variant="ghost" size="icon" className="h-6 w-6">
-                <Heart className="h-3.5 w-3.5" />
+              <Button
+                type="button" variant="ghost" size="icon" className="h-6 w-6"
+                aria-label="Requested by client"
+                aria-pressed={appointmentForm.requestedByClient}
+                onClick={() => setAppointmentForm(prev => ({ ...prev, requestedByClient: !prev.requestedByClient }))}
+              >
+                <Heart className={cn("h-3.5 w-3.5", appointmentForm.requestedByClient ? "fill-red-500 text-red-500" : "text-gray-400")} />
               </Button>
               <span className="text-xs text-gray-700">Requested by client</span>
-              <Button aria-label="Help" variant="ghost" size="icon" className="h-3.5 w-3.5">
-                <HelpCircle className="h-3 w-3 text-gray-400" />
-              </Button>
             </div>
-            )}
 
-            {/* Add Another Service */}
-            {SHOW_WIP_BOOKING_FIELDS && (
-            <Button variant="outline" className="w-full h-8 text-xs">
-              <Plus className="h-3.5 w-3.5 mr-1.5" />
-              ADD ANOTHER SERVICE
-            </Button>
-            )}
-
-            {/* Financial Summary */}
+            {/* Financial Summary — reflects group members / extra services / occurrences */}
             <div className="pt-2 border-t border-gray-200 space-y-1.5">
-              <div className="flex justify-between items-center">
-                <Label className="text-xs font-medium">Total</Label>
-                <span className="text-xs font-semibold">
-                  {(() => {
-                    const selectedService = services.find(s => s.id.toString() === appointmentForm.serviceId);
-                    return selectedService?.price ? `${selectedService.price.toFixed(2)} zł` : "0,00 zł";
-                  })()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <Label className="text-xs font-medium">To be paid</Label>
-                <span className="text-xs font-semibold">
-                  {(() => {
-                    const selectedService = services.find(s => s.id.toString() === appointmentForm.serviceId);
-                    return selectedService?.price ? `${selectedService.price.toFixed(2)} zł` : "0,00 zł";
-                  })()}
-                </span>
-              </div>
+              {(() => {
+                const primary = servicePrice(appointmentForm.serviceId) || 0;
+                let total = 0;
+                if (bookingMode === "group") {
+                  total = primary * (groupMembers.length + 1);
+                } else {
+                  const perVisit = primary + extraServices.reduce((sum, es) => sum + (servicePrice(es.serviceId) || 0), 0);
+                  const occurrences = bookingMode === "recurring" ? computeRecurrenceDates(appointmentForm.date, recurrence).length : 1;
+                  total = perVisit * occurrences;
+                }
+                const label = `${total.toFixed(2)} zł`;
+                return (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs font-medium">Total</Label>
+                      <span className="text-xs font-semibold">{label}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs font-medium">To be paid</Label>
+                      <span className="text-xs font-semibold">{label}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -2480,7 +2811,7 @@ export default function CalendarPage() {
             </Button>
             <Button
               className="flex-1 h-8 text-xs bg-gray-600 hover:bg-gray-700"
-              disabled={!appointmentForm.serviceId || !appointmentForm.staffId || !appointmentForm.startTime || !appointmentForm.endTime}
+              disabled={isBatchSubmitting || !appointmentForm.serviceId || !appointmentForm.staffId || !appointmentForm.startTime || !appointmentForm.endTime}
               onClick={async () => {
                 try {
                   if (!appointmentForm.serviceId) {
@@ -2529,6 +2860,13 @@ export default function CalendarPage() {
                     return;
                   }
 
+                  // Advanced modes (group / recurring / multi-service) are composed
+                  // from the single-booking endpoint — hand off to the batch submitter.
+                  if (!editingAppointmentId && (bookingMode !== "single" || extraServices.length > 0)) {
+                    await submitAdvancedBooking();
+                    return;
+                  }
+
                   const selectedService = services.find(s => s.id.toString() === appointmentForm.serviceId);
                   
                   // Check for conflicts before saving
@@ -2566,12 +2904,12 @@ export default function CalendarPage() {
                     clientPhone: appointmentForm.clientPhone || undefined,
                     clientEmail: appointmentForm.clientEmail || undefined,
                     price: selectedService?.price,
-                    notes: appointmentForm.notes || undefined,
+                    notes: withRequestedFlag(appointmentForm.notes, appointmentForm.requestedByClient),
                     // Key generated when form opened — stable across retries for this booking attempt
                     idempotencyKey: appointmentForm.idempotencyKey,
                   };
 
-                  const EMPTY_FORM = { clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd'), idempotencyKey: `booking-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+                  const EMPTY_FORM = { clientId: "", clientName: "", clientPhone: "", clientEmail: "", serviceId: "", staffId: "", startTime: "", endTime: "", notes: "", price: "", date: format(currentDate, 'yyyy-MM-dd'), requestedByClient: false, idempotencyKey: `booking-${Date.now()}-${Math.random().toString(36).slice(2)}` };
 
                   if (hasTimeOffConflictResult) {
                     setPendingAppointmentWithTimeOffData(appointmentData);
@@ -2595,7 +2933,17 @@ export default function CalendarPage() {
                 }
               }}
             >
-              {editingAppointmentId ? 'UPDATE APPOINTMENT' : 'CREATE APPOINTMENT'}
+              {isBatchSubmitting
+                ? 'CREATING…'
+                : editingAppointmentId
+                  ? 'UPDATE APPOINTMENT'
+                  : bookingMode === 'group'
+                    ? `CREATE GROUP (${groupMembers.length + 1})`
+                    : bookingMode === 'recurring'
+                      ? `CREATE ${computeRecurrenceDates(appointmentForm.date, recurrence).length}×`
+                      : extraServices.length > 0
+                        ? `CREATE ${extraServices.length + 1} SERVICES`
+                        : 'CREATE APPOINTMENT'}
             </Button>
           </div>
         </SheetContent>
