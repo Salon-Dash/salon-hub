@@ -444,6 +444,21 @@ export default function CalendarPage() {
   
   // Generate time slots (always 00:00-23:59, business hours checked dynamically per day)
   const timeSlots = generateTimeSlots();
+  // Time <Select> options are on a 15-min grid, but a service whose duration
+  // isn't a multiple of 15 (e.g. 20/50 min) yields an off-grid end time like
+  // "09:20" that has no matching option, so the dropdown renders blank even
+  // though the value is set. Always include the current value as an option.
+  const timeOptionsWith = (current: string) => {
+    const base = timeSlots.map((s) => s.time);
+    if (current && !base.includes(current)) {
+      return [...base, current].sort();
+    }
+    return base;
+  };
+  // Placeholder booking fields (Add-ons, "Requested by client", multi-service)
+  // that aren't wired to real behaviour yet. Hidden until implemented so the
+  // form shows no dead controls. Flip on when the features land (phase 2).
+  const SHOW_WIP_BOOKING_FIELDS = false;
   
   // Convert API appointments to component format (with error handling)
   const appointments: AppointmentWithDate[] = (apiAppointments || []).map(convertToComponentAppointment);
@@ -544,6 +559,7 @@ export default function CalendarPage() {
     notes: "",
     price: "",
     date: format(currentDate, 'yyyy-MM-dd'),
+    requestedByClient: false,
     // Generated when form opens — stable across retries for the same booking attempt
     idempotencyKey: `booking-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   });
@@ -565,6 +581,18 @@ export default function CalendarPage() {
       // Don't show error toast, just log it
     }
   };
+
+  // Keep the appointment's date in sync with the day being viewed.
+  // Without this the form's `date` stays stuck at its initial (mount-time)
+  // value, so every appointment was saved to "today" regardless of the
+  // day the user had navigated to. Runs when the form opens and whenever
+  // the viewed day changes while it's open. The user can still override it
+  // via the date picker inside the form (that sets `date` directly).
+  useEffect(() => {
+    if (isNewAppointmentOpen) {
+      setAppointmentForm(prev => ({ ...prev, date: format(currentDate, 'yyyy-MM-dd') }));
+    }
+  }, [isNewAppointmentOpen, currentDate]);
 
   // Update form when finalSelection changes and form is opened
   useEffect(() => {
@@ -2202,20 +2230,23 @@ export default function CalendarPage() {
 
           {/* Form Content - Scrollable if needed */}
           <div className="flex-1 p-4 space-y-3 overflow-y-auto min-h-0">
-            {/* Date/Time Controls */}
-            <div className="flex gap-1.5">
-              <Button variant="outline" className="flex-1 justify-between h-8 text-xs px-2">
-                Today
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-              <Button variant="outline" className="flex-1 h-8 text-xs px-2">
-                <User className="h-3 w-3 mr-1" />
-                <span className="hidden sm:inline">GROUP</span>
-              </Button>
-              <Button variant="outline" className="flex-1 h-8 text-xs px-2">
-                <CalendarIcon className="h-3 w-3 mr-1" />
-                <span className="hidden sm:inline">RECURRING</span>
-              </Button>
+            {/* Date picker — drives the appointment's date (and syncs the
+                viewed day so conflict detection matches the chosen date). */}
+            <div className="space-y-1">
+              <Label className="text-xs">Date *</Label>
+              <Input
+                type="date"
+                value={appointmentForm.date}
+                min={format(new Date(), 'yyyy-MM-dd')}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v) return;
+                  setAppointmentForm(prev => ({ ...prev, date: v }));
+                  const parsed = parse(v, 'yyyy-MM-dd', new Date());
+                  if (!isNaN(parsed.getTime())) setCurrentDate(parsed);
+                }}
+                className="h-8 text-xs"
+              />
             </div>
 
             {/* Service Selection */}
@@ -2304,6 +2335,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Add-ons */}
+            {SHOW_WIP_BOOKING_FIELDS && (
             <div className="space-y-1">
               <Label className="text-xs">Add-ons</Label>
               <div className="relative">
@@ -2315,6 +2347,7 @@ export default function CalendarPage() {
                 <ArrowRight className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
               </div>
             </div>
+            )}
 
             {/* Time Selection */}
             <div className="grid grid-cols-2 gap-2">
@@ -2328,9 +2361,9 @@ export default function CalendarPage() {
                     <SelectValue placeholder="Start time" />
                   </SelectTrigger>
                   <SelectContent>
-                    {timeSlots.filter(slot => slot.minute === 0 || slot.minute === 15 || slot.minute === 30 || slot.minute === 45).map((slot) => (
-                      <SelectItem key={slot.time} value={slot.time}>
-                        {slot.time}
+                    {timeOptionsWith(appointmentForm.startTime).map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -2346,9 +2379,9 @@ export default function CalendarPage() {
                     <SelectValue placeholder="End time" />
                   </SelectTrigger>
                   <SelectContent>
-                    {timeSlots.filter(slot => slot.minute === 0 || slot.minute === 15 || slot.minute === 30 || slot.minute === 45).map((slot) => (
-                      <SelectItem key={slot.time} value={slot.time}>
-                        {slot.time}
+                    {timeOptionsWith(appointmentForm.endTime).map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -2393,6 +2426,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Client Request */}
+            {SHOW_WIP_BOOKING_FIELDS && (
             <div className="flex items-center gap-1.5 py-0.5">
               <Button variant="ghost" size="icon" className="h-6 w-6">
                 <Heart className="h-3.5 w-3.5" />
@@ -2402,12 +2436,15 @@ export default function CalendarPage() {
                 <HelpCircle className="h-3 w-3 text-gray-400" />
               </Button>
             </div>
+            )}
 
             {/* Add Another Service */}
+            {SHOW_WIP_BOOKING_FIELDS && (
             <Button variant="outline" className="w-full h-8 text-xs">
               <Plus className="h-3.5 w-3.5 mr-1.5" />
               ADD ANOTHER SERVICE
             </Button>
+            )}
 
             {/* Financial Summary */}
             <div className="pt-2 border-t border-gray-200 space-y-1.5">
