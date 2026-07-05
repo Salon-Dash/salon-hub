@@ -86,6 +86,7 @@ const formatPrice = (price?: number): string => {
 
 // Helper function to get initials
 const getInitials = (name: string): string => {
+  if (!name) return "?";
   return name
     .split(" ")
     .map((n) => n[0])

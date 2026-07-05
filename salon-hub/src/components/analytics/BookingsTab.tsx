@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { pct } from "@/lib/utils";
 import { Calendar, CheckCircle, XCircle, Clock, Activity } from "lucide-react";
 import type { BookingAnalytics } from "@/services/analysisService";
 
@@ -26,7 +27,7 @@ export default function BookingsTab({ data }: BookingsTabProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-status-completed">{data.confirmedBookings}</div>
-            <div className="text-xs text-muted-foreground mt-1">{data.confirmationRate.toFixed(1)}% rate</div>
+            <div className="text-xs text-muted-foreground mt-1">{pct(data.confirmationRate)}% rate</div>
           </CardContent>
         </Card>
         <Card className="border-border/60 shadow-sm">
@@ -35,7 +36,7 @@ export default function BookingsTab({ data }: BookingsTabProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">{data.cancelledBookings}</div>
-            <div className="text-xs text-muted-foreground mt-1">{data.cancellationRate.toFixed(1)}% rate</div>
+            <div className="text-xs text-muted-foreground mt-1">{pct(data.cancellationRate)}% rate</div>
           </CardContent>
         </Card>
         <Card className="border-border/60 shadow-sm">
@@ -44,7 +45,7 @@ export default function BookingsTab({ data }: BookingsTabProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-500">{data.noShowBookings}</div>
-            <div className="text-xs text-muted-foreground mt-1">{data.noShowRate.toFixed(1)}% rate</div>
+            <div className="text-xs text-muted-foreground mt-1">{pct(data.noShowRate)}% rate</div>
           </CardContent>
         </Card>
       </div>
@@ -66,7 +67,7 @@ export default function BookingsTab({ data }: BookingsTabProps) {
                     <div 
                       className="w-full bg-gradient-to-t from-appointment-blue to-appointment-blue/60 rounded-t transition-all cursor-pointer"
                       style={{ height: `${height}%`, minHeight: height > 0 ? '4px' : '0' }}
-                      title={`${day.dayOfWeek}: ${day.bookings} bookings (${day.percentage.toFixed(1)}%)`}
+                      title={`${day.dayOfWeek}: ${day.bookings} bookings (${pct(day.percentage)}%)`}
                     />
                     <span className="text-[10px] text-muted-foreground text-center">
                       {day.dayOfWeek.substring(0, 3)}
@@ -96,7 +97,7 @@ export default function BookingsTab({ data }: BookingsTabProps) {
                     <div 
                       className="w-full bg-gradient-to-t from-appointment-purple to-appointment-purple/60 rounded-t transition-all cursor-pointer"
                       style={{ height: `${height}%`, minHeight: height > 0 ? '2px' : '0' }}
-                      title={`${hour.hour}:00 - ${hour.bookings} bookings (${hour.percentage.toFixed(1)}%)`}
+                      title={`${hour.hour}:00 - ${hour.bookings} bookings (${pct(hour.percentage)}%)`}
                     />
                     <span className="text-[9px] text-muted-foreground">{hour.hour}</span>
                   </div>
@@ -122,7 +123,7 @@ export default function BookingsTab({ data }: BookingsTabProps) {
                   <div key={status} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold capitalize">{status.toLowerCase()}</span>
-                      <span className="text-sm text-muted-foreground">{count} ({percentage.toFixed(1)}%)</span>
+                      <span className="text-sm text-muted-foreground">{count} ({pct(percentage)}%)</span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-2">
                       <div 

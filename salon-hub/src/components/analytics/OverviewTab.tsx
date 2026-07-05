@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { money, pct } from "@/lib/utils";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -24,8 +25,8 @@ export default function OverviewTab({ data }: OverviewTabProps) {
   const metrics = [
     { 
       title: "Total Revenue", 
-      value: `${data.totalRevenue.toFixed(2)} zł`, 
-      change: `${data.revenueChange >= 0 ? '+' : ''}${data.revenueChange.toFixed(1)}%`, 
+      value: `${money(data.totalRevenue)} zł`, 
+      change: `${data.revenueChange >= 0 ? '+' : ''}${pct(data.revenueChange)}%`, 
       trend: data.revenueChange >= 0 ? "up" : "down", 
       period: "vs previous period", 
       icon: DollarSign, 
@@ -54,8 +55,8 @@ export default function OverviewTab({ data }: OverviewTabProps) {
     },
     { 
       title: "Avg. Ticket", 
-      value: `${data.averageTicket.toFixed(2)} zł`, 
-      change: `${data.averageTicketChange >= 0 ? '+' : ''}${data.averageTicketChange.toFixed(1)}%`, 
+      value: `${money(data.averageTicket)} zł`, 
+      change: `${data.averageTicketChange >= 0 ? '+' : ''}${pct(data.averageTicketChange)}%`, 
       trend: data.averageTicketChange >= 0 ? "up" : "down", 
       period: "vs previous period", 
       icon: TrendingUp, 
@@ -125,7 +126,7 @@ export default function OverviewTab({ data }: OverviewTabProps) {
                       <div 
                         className="w-full bg-gradient-to-t from-status-completed to-status-completed/60 rounded-t hover:from-status-completed/80 hover:to-status-completed/40 transition-all cursor-pointer"
                         style={{ height: `${height}%`, minHeight: height > 0 ? '4px' : '0' }}
-                        title={`${format(new Date(day.date), "MMM dd")}: ${day.revenue.toFixed(2)} zł`}
+                        title={`${format(new Date(day.date), "MMM dd")}: ${money(day.revenue)} zł`}
                       />
                       <span className="text-[10px] text-muted-foreground hidden md:block">
                         {format(new Date(day.date), "MMM dd")}
@@ -175,10 +176,10 @@ export default function OverviewTab({ data }: OverviewTabProps) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-status-completed text-base">{service.revenue.toFixed(2)} zł</div>
+                      <div className="font-bold text-status-completed text-base">{money(service.revenue)} zł</div>
                       {service.growth !== 0 && (
                         <div className={`text-xs font-medium ${service.growth > 0 ? 'text-status-completed' : 'text-destructive'}`}>
-                          {service.growth > 0 ? '+' : ''}{service.growth.toFixed(1)}%
+                          {service.growth > 0 ? '+' : ''}{pct(service.growth)}%
                         </div>
                       )}
                     </div>
@@ -216,14 +217,14 @@ export default function OverviewTab({ data }: OverviewTabProps) {
                       </span>
                       <div>
                         <p className="font-semibold text-sm">{staff.staffName}</p>
-                        <p className="text-xs text-muted-foreground">{staff.bookings} bookings • Avg: {staff.averageTicket.toFixed(2)} zł</p>
+                        <p className="text-xs text-muted-foreground">{staff.bookings} bookings • Avg: {money(staff.averageTicket)} zł</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-status-completed text-base">{staff.revenue.toFixed(2)} zł</div>
+                      <div className="font-bold text-status-completed text-base">{money(staff.revenue)} zł</div>
                       {staff.growth !== 0 && (
                         <div className={`text-xs font-medium ${staff.growth > 0 ? 'text-status-completed' : 'text-destructive'}`}>
-                          {staff.growth > 0 ? '+' : ''}{staff.growth.toFixed(1)}%
+                          {staff.growth > 0 ? '+' : ''}{pct(staff.growth)}%
                         </div>
                       )}
                     </div>
@@ -267,7 +268,7 @@ export default function OverviewTab({ data }: OverviewTabProps) {
                   </div>
                   <div className="text-2xl font-bold">{data.bookingTrends.cancelledBookings}</div>
                   <div className="text-xs text-destructive mt-1">
-                    {data.bookingTrends.cancellationRate.toFixed(1)}% rate
+                    {pct(data.bookingTrends.cancellationRate)}% rate
                   </div>
                 </div>
               </div>
@@ -301,14 +302,14 @@ export default function OverviewTab({ data }: OverviewTabProps) {
                     <DollarSign className="h-4 w-4 text-status-completed" />
                     <span className="text-xs font-semibold text-muted-foreground">Avg Revenue</span>
                   </div>
-                  <div className="text-2xl font-bold">{data.staffPerformance.averageRevenuePerStaff.toFixed(2)} zł</div>
+                  <div className="text-2xl font-bold">{money(data.staffPerformance.averageRevenuePerStaff)} zł</div>
                 </div>
               </div>
               <div className="p-4 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/30">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold">Total Staff Revenue</span>
                 </div>
-                <div className="text-xl font-bold">{data.staffPerformance.totalStaffRevenue.toFixed(2)} zł</div>
+                <div className="text-xl font-bold">{money(data.staffPerformance.totalStaffRevenue)} zł</div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {data.staffPerformance.totalStaffBookings} total bookings
                 </div>

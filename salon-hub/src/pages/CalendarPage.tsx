@@ -806,7 +806,7 @@ export default function CalendarPage() {
           </Button>
               {viewType === "Day" && (
                 <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrevDay}>
+            <Button aria-label="Previous day" variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrevDay}>
                     <ChevronLeft size={16} />
             </Button>
                   <Popover onOpenChange={(open) => {
@@ -849,10 +849,10 @@ export default function CalendarPage() {
                             {format(datePickerMonth, "LLLL yyyy")}
                           </h3>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDatePickerMonth(subMonths(datePickerMonth, 1))}>
+                            <Button aria-label="Previous month" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDatePickerMonth(subMonths(datePickerMonth, 1))}>
                               <ChevronLeft size={14} />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDatePickerMonth(addMonths(datePickerMonth, 1))}>
+                            <Button aria-label="Next month" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDatePickerMonth(addMonths(datePickerMonth, 1))}>
                               <ChevronRight size={14} />
             </Button>
           </div>
@@ -905,14 +905,14 @@ export default function CalendarPage() {
                       </div>
                     </PopoverContent>
                   </Popover>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextDay}>
+            <Button aria-label="Next day" variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextDay}>
                     <ChevronRight size={16} />
             </Button>
           </div>
               )}
               {viewType === "Month" && (
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrevMonth}>
+                  <Button aria-label="Previous month" variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrevMonth}>
                     <ChevronLeft size={16} />
                   </Button>
                   <div className="flex items-center gap-2">
@@ -921,14 +921,14 @@ export default function CalendarPage() {
                     </span>
               <ChevronDown size={14} />
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextMonth}>
+                  <Button aria-label="Next month" variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextMonth}>
                     <ChevronRight size={16} />
             </Button>
                 </div>
               )}
               {viewType === "Weekly" && (
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrevWeek}>
+                  <Button aria-label="Previous week" variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrevWeek}>
                     <ChevronLeft size={16} />
             </Button>
                   <div className="flex items-center gap-2">
@@ -941,7 +941,7 @@ export default function CalendarPage() {
                     </span>
               <ChevronDown size={14} />
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextWeek}>
+                  <Button aria-label="Next week" variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextWeek}>
                     <ChevronRight size={16} />
             </Button>
           </div>
@@ -949,10 +949,10 @@ export default function CalendarPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button aria-label="Settings" variant="ghost" size="icon" className="h-8 w-8">
             <Settings size={18} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button aria-label="Notifications" variant="ghost" size="icon" className="h-8 w-8">
                 <Bell size={18} />
           </Button>
               <div className="flex items-center gap-2 border border-border rounded-md px-2 h-8">
@@ -2398,7 +2398,7 @@ export default function CalendarPage() {
                 <Heart className="h-3.5 w-3.5" />
               </Button>
               <span className="text-xs text-gray-700">Requested by client</span>
-              <Button variant="ghost" size="icon" className="h-3.5 w-3.5">
+              <Button aria-label="Help" variant="ghost" size="icon" className="h-3.5 w-3.5">
                 <HelpCircle className="h-3 w-3 text-gray-400" />
               </Button>
             </div>

@@ -59,7 +59,7 @@ export function BookingDetailsScreen({ fonts, booking, onBack, onCancel }: Props
         <View style={styles.hero}>
           <Image source={{ uri: booking.heroImage }} style={styles.heroImage} contentFit="cover" />
           <View style={styles.heroOverlay} />
-          <Pressable onPress={onBack} style={[styles.heroBackBtn, { top: insets.top + 8 }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} style={[styles.heroBackBtn, { top: insets.top + 8 }]}>
             <Ionicons name="arrow-back" size={20} color={colors.text} />
           </Pressable>
           <Text style={[styles.heroTitle, { fontFamily: fonts.bold }]}>

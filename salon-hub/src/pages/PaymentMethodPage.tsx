@@ -243,6 +243,7 @@ export default function PaymentMethodPage({
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Back"
               onClick={handleCancel}
               className="h-8 w-8"
             >
@@ -265,7 +266,7 @@ export default function PaymentMethodPage({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label className="text-base font-semibold text-gray-900">Tip</Label>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button aria-label="Share" variant="ghost" size="icon" className="h-8 w-8">
                 <Share2 className="h-4 w-4 text-gray-600" />
               </Button>
             </div>
@@ -464,7 +465,7 @@ export default function PaymentMethodPage({
                     />
                   ) : (
                     <span className="text-xs font-semibold text-gray-600">
-                      {selectedStaff.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      {(selectedStaff.name || '').split(' ').map(n => n[0]).join('').toUpperCase()}
                     </span>
                   )}
                 </div>
@@ -501,7 +502,8 @@ export default function PaymentMethodPage({
                 <span className="text-gray-600">Discount</span>
                 <Button 
                   variant="ghost" 
-                  size="icon" 
+                  size="icon"
+                  aria-label="Edit discount"
                   className="h-5 w-5"
                   onClick={() => {
                     setDiscountValue("");
@@ -581,6 +583,7 @@ export default function PaymentMethodPage({
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Delete"
             className="h-10 w-10 text-red-600 hover:bg-red-50"
           >
             <Trash2 className="h-5 w-5" />

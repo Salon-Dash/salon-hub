@@ -1205,6 +1205,7 @@ const RegistrationPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Remove staff"
                             onClick={() => {
                               updateFormData("staffMembers", formData.staffMembers.filter(s => s.id !== staff.id));
                             }}

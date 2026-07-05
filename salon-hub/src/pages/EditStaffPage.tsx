@@ -116,6 +116,7 @@ export default function EditStaffPage() {
   }, {} as Record<string, typeof services>);
 
   const getInitials = (name: string) => {
+    if (!name) return "?";
     return name
       .split(" ")
       .map((n) => n[0])

@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { pct } from "@/lib/utils";
 import { Users, TrendingUp, UserCheck, UserX } from "lucide-react";
 import type { ClientAnalytics } from "@/services/analysisService";
 
@@ -45,7 +46,7 @@ export default function ClientsTab({ data }: ClientsTabProps) {
           <CardContent>
             <div className="text-2xl font-bold text-status-completed">{newClients}</div>
             {newClientRate > 0 && (
-              <div className="text-xs text-muted-foreground mt-1">{newClientRate.toFixed(1)}% of total</div>
+              <div className="text-xs text-muted-foreground mt-1">{pct(newClientRate)}% of total</div>
             )}
           </CardContent>
         </Card>
@@ -64,7 +65,7 @@ export default function ClientsTab({ data }: ClientsTabProps) {
           <CardContent>
             <div className="text-2xl font-bold">{averageClientValue.toFixed(2)} zł</div>
             {averageVisitsPerClient > 0 && (
-              <div className="text-xs text-muted-foreground mt-1">{averageVisitsPerClient.toFixed(1)} avg visits</div>
+              <div className="text-xs text-muted-foreground mt-1">{pct(averageVisitsPerClient)} avg visits</div>
             )}
           </CardContent>
         </Card>

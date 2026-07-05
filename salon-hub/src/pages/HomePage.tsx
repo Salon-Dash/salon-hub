@@ -161,7 +161,7 @@ export default function HomePage() {
       },
       {
         title: "Revenue Today",
-        value: statsLoading ? null : overview ? overview.totalRevenue.toFixed(2) : "0.00",
+        value: statsLoading ? null : overview ? (overview.totalRevenue ?? 0).toFixed(2) : "0.00",
         change: overview ? `${overview.revenueChange >= 0 ? "+" : ""}${overview.revenueChange}% from avg` : "No revenue yet",
         icon: DollarSign,
         color: "text-status-completed",
@@ -177,7 +177,7 @@ export default function HomePage() {
       },
       {
         title: "Avg Ticket",
-        value: statsLoading ? null : overview ? overview.averageTicket.toFixed(2) : "0.00",
+        value: statsLoading ? null : overview ? (overview.averageTicket ?? 0).toFixed(2) : "0.00",
         change: overview ? `${overview.averageTicketChange >= 0 ? "+" : ""}${overview.averageTicketChange}% from avg` : "No data yet",
         icon: Star,
         color: "text-appointment-yellow",

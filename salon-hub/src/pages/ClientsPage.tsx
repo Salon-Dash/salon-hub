@@ -474,6 +474,7 @@ export default function ClientsPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  aria-label="More actions"
                                   className="h-8 w-8 hover:bg-accent/10 hover:text-accent transition-all"
                                 >
                                   <MoreHorizontal size={16} />

@@ -547,7 +547,7 @@ export default function AddServicePage() {
                     ) : safeStaff.length > 0 ? (
                       safeStaff.map((staffMember) => {
                         const isSelected = selectedStaff.includes(staffMember.id);
-                        const initials = staffMember.initials || staffMember.name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
+                        const initials = staffMember.initials || (staffMember.name || "").split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
                         return (
                           <div
                             key={staffMember.id}

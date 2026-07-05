@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { money, pct } from "@/lib/utils";
 import { Package, TrendingUp, Award } from "lucide-react";
 import type { ServiceAnalytics } from "@/services/analysisService";
 
@@ -17,7 +18,7 @@ export default function ServicesTab({ data }: ServicesTabProps) {
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Avg Service Price</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.averageServicePrice.toFixed(2)} zł</div>
+            <div className="text-2xl font-bold">{money(data.averageServicePrice)} zł</div>
           </CardContent>
         </Card>
         <Card className="border-border/60 shadow-sm">
@@ -59,14 +60,14 @@ export default function ServicesTab({ data }: ServicesTabProps) {
                     <div className="flex-1">
                       <p className="font-semibold text-sm">{service.serviceName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {service.bookings} bookings • {service.popularityScore.toFixed(1)}% popularity
+                        {service.bookings} bookings • {pct(service.popularityScore)}% popularity
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-status-completed text-base">{service.revenue.toFixed(2)} zł</div>
+                    <div className="font-bold text-status-completed text-base">{money(service.revenue)} zł</div>
                     <div className="text-xs text-muted-foreground">
-                      Avg: {service.averagePrice.toFixed(2)} zł • {service.revenuePercentage.toFixed(1)}% of total
+                      Avg: {money(service.averagePrice)} zł • {pct(service.revenuePercentage)}% of total
                     </div>
                   </div>
                 </div>
@@ -92,14 +93,14 @@ export default function ServicesTab({ data }: ServicesTabProps) {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-semibold">{category.categoryName}</span>
-                    <span className="text-sm text-muted-foreground">{category.revenuePercentage.toFixed(1)}%</span>
+                    <span className="text-sm text-muted-foreground">{pct(category.revenuePercentage)}%</span>
                   </div>
-                  <div className="text-xl font-bold mb-1">{category.totalRevenue.toFixed(2)} zł</div>
+                  <div className="text-xl font-bold mb-1">{money(category.totalRevenue)} zł</div>
                   <div className="text-sm text-muted-foreground">
                     {category.totalBookings} bookings • {category.serviceCount} services
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Avg price: {category.averageServicePrice.toFixed(2)} zł
+                    Avg price: {money(category.averageServicePrice)} zł
                   </div>
                 </div>
               ))}

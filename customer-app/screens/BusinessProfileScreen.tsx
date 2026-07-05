@@ -133,14 +133,14 @@ export function BusinessProfileScreen({ businessId, fonts, onBack, onBookNow }: 
             cachePolicy="memory-disk"
           />
           <View style={[styles.heroHeaderRow, { top: insets.top + 10 }]}>
-            <Pressable style={({ pressed }) => [styles.heroIconBtn, fadePressed(pressed)]} onPress={onBack}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Back" style={({ pressed }) => [styles.heroIconBtn, fadePressed(pressed)]} onPress={onBack}>
               <Ionicons name="chevron-back" size={24} color={colors.text} />
             </Pressable>
             <View style={styles.heroHeaderRight}>
-              <Pressable style={({ pressed }) => [styles.heroIconBtn, fadePressed(pressed)]}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Share" style={({ pressed }) => [styles.heroIconBtn, fadePressed(pressed)]}>
                 <Ionicons name="share-social-outline" size={19} color={colors.text} />
               </Pressable>
-              <Pressable style={({ pressed }) => [styles.heroIconBtn, fadePressed(pressed)]}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Add to favorites" style={({ pressed }) => [styles.heroIconBtn, fadePressed(pressed)]}>
                 <Ionicons name="heart-outline" size={20} color={colors.text} />
               </Pressable>
             </View>

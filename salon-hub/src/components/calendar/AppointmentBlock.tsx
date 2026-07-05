@@ -218,7 +218,7 @@ export function StaffAvatar({ staff, size = "md" }: StaffAvatarProps) {
           />
         ) : (
           <span className="font-semibold text-white drop-shadow-sm">
-            {staff.name.split(" ").map((n) => n[0]).join("")}
+            {(staff.name || "").split(" ").map((n) => n[0]).join("")}
           </span>
         )}
       </div>
