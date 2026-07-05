@@ -115,7 +115,15 @@ public class CustomerBookingController {
             // Service not found — proceed without name/price rather than failing the booking
         }
 
-        Appointment saved = appointmentRepository.save(appt);
+        // The COUNT check above is a fast-path only (TOCTOU under concurrency). The
+        // real guard is the DB exclusion constraint (V4__no_double_booking_constraint):
+        // a racing booking for the same slot trips it here — surface as 409, not 500.
+        Appointment saved;
+        try {
+            saved = appointmentRepository.save(appt);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
+        }
         log.info("Customer booking created id={} for {}", saved.getId(), email);
 
         Map<String, Object> resp = new HashMap<>();

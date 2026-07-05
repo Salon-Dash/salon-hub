@@ -105,9 +105,11 @@ public class PaymentConfirmationController {
             int appointmentId = toInt(aptIdRaw);
             if (appointmentId > 0) {
                 try {
+                    // Scope to the confirmed (owned) business so an owner cannot flip
+                    // another tenant's appointment to PAID/COMPLETED via a foreign appointmentId.
                     int rows = jdbc.update(
-                            "UPDATE appointments SET payment_status = 'PAID', status = 'COMPLETED', updated_at = ? WHERE id = ?",
-                            Timestamp.valueOf(now), appointmentId);
+                            "UPDATE appointments SET payment_status = 'PAID', status = 'COMPLETED', updated_at = ? WHERE id = ? AND business_id = ?",
+                            Timestamp.valueOf(now), appointmentId, businessId);
                     appointmentUpdated = rows > 0;
                 } catch (Exception ignored) { /* non-fatal */ }
             }

@@ -102,12 +102,15 @@ public class ClientController {
             return rows.isEmpty() ? buildMinimalClient(clientId, businessId, firstName, lastName, email, phone) : toClientDtoFromTable(rows.get(0));
         } catch (ResponseStatusException ex) {
             throw ex;
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A client with these details already exists");
         } catch (Exception e) {
-            // clients table doesn't exist — return minimal response
-            Map<String, Object> dto = buildMinimalClient(
-                    (long) (int)(Math.random() * Integer.MAX_VALUE),
-                    businessId, firstName, lastName, email, phone);
-            return dto;
+            // The clients table is Flyway-managed (V2__sales_and_clients), so a failure
+            // here is a real DB error. Surface it instead of returning a fabricated
+            // client with a random id — which would make the UI believe a client was
+            // saved when it was not, breaking every later reference to that id.
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to create client: " + e.getMessage());
         }
     }
 
