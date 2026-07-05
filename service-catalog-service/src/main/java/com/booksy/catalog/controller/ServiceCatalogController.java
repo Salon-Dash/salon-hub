@@ -131,14 +131,14 @@ public class ServiceCatalogController {
                                        @RequestBody Map<String, Object> body) {
         String name = (String) body.get("name");
         String description = (String) body.getOrDefault("description", null);
-        return catalogService.updateCategory(id, name, description);
+        return catalogService.updateCategory(id, businessId, name, description);
     }
 
     /** DELETE /api/categories/{id}/business/{businessId} — dashboard pattern */
     @DeleteMapping("/api/categories/{id}/business/{businessId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCategory(@PathVariable Long id, @PathVariable Long businessId) {
-        catalogService.deleteCategory(id);
+        catalogService.deleteCategory(id, businessId);
     }
 
     // ── Services by category ──────────────────────────────────────────────────

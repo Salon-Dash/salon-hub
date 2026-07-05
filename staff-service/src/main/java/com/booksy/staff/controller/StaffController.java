@@ -32,13 +32,27 @@ public class StaffController {
 
     /**
      * GET /api/staff
-     * Returns all active staff. Optional ?businessId= filter.
-     * Used by booking-service StaffClient#getAllStaff().
+     * Returns active staff. Optional ?businessId= filter.
+     * Used by booking-service StaffClient#getAllStaff() (internal, no identity header).
+     *
+     * An authenticated end-user must scope to a business: the gateway injects
+     * X-User-Id and the tenant filter has already verified they own ?businessId=.
+     * Without a businessId we cannot scope the result, so returning every tenant's
+     * staff would be a cross-tenant leak — reject it. Only internal service-to-service
+     * calls (no identity header) or platform ADMINs may list all staff unscoped.
      */
     @GetMapping
     public ResponseEntity<List<StaffDto>> getAllStaff(
-            @RequestParam(required = false) Long businessId) {
+            @RequestParam(required = false) Long businessId,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role) {
         log.debug("GET /api/staff businessId={}", businessId);
+        boolean authenticatedEndUser = userId != null && !userId.isBlank()
+                && !"ADMIN".equalsIgnoreCase(role);
+        if (businessId == null && authenticatedEndUser) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "businessId is required");
+        }
         return ResponseEntity.ok(staffService.getAllActive(businessId));
     }
 

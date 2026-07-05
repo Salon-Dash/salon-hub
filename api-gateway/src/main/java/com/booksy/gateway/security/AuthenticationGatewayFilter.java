@@ -57,13 +57,17 @@ public class AuthenticationGatewayFilter implements GlobalFilter, Ordered {
     private boolean isPublic(String method, String path) {
         boolean alwaysPublic = path.startsWith("/api/auth/")
                 || path.startsWith("/api/public/")
-                || path.startsWith("/ws")
+                || path.equals("/ws") || path.startsWith("/ws/")
                 || path.startsWith("/actuator/")
                 || path.equals("/actuator/health");
         if (alwaysPublic) return true;
         // Business hours are public salon info that the customer app displays while
         // browsing; only reads are open — writes stay owner-authenticated.
         if ("GET".equalsIgnoreCase(method) && path.startsWith("/api/business-hours/")) return true;
+        // Stripe payment webhook: called server-to-server by Stripe with no JWT, so it
+        // must be reachable without auth. It is protected by Stripe signature
+        // verification (PaymentService.verifyWebhookEvent, which fails closed).
+        if ("POST".equalsIgnoreCase(method) && path.equals("/api/payments/webhook")) return true;
         return false;
     }
 

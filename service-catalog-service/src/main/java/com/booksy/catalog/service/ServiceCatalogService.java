@@ -142,10 +142,18 @@ public class ServiceCatalogService {
     }
 
     @Transactional
-    public CategoryDto updateCategory(Long id, String name, String description) {
+    public CategoryDto updateCategory(Long id, Long businessId, String name, String description) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Category not found"));
+        // Tenant ownership: the category must belong to the business in the path.
+        // The gateway/tenant filter verified the caller owns {businessId}; here we
+        // ensure {id} is not another tenant's category (cross-tenant rename/delete).
+        if (businessId != null && !businessId.equals(category.getBusinessId())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Category does not belong to business " + businessId);
+        }
         if (name != null) category.setName(name);
         if (description != null) category.setDescription(description);
         Category saved = categoryRepository.save(category);
@@ -153,7 +161,17 @@ public class ServiceCatalogService {
     }
 
     @Transactional
-    public void deleteCategory(Long id) {
+    public void deleteCategory(Long id, Long businessId) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Category not found"));
+        // Tenant ownership: refuse to delete another tenant's category (which would
+        // also unlink that tenant's services below).
+        if (businessId != null && !businessId.equals(category.getBusinessId())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Category does not belong to business " + businessId);
+        }
         // Unlink all services from this category to avoid dangling foreign keys
         List<ServiceEntity> services = serviceRepository.findByCategoryIdAndIsActiveTrue(id);
         // Also unlink inactive services in the same category

@@ -67,11 +67,24 @@ public class PaymentService {
         }
     }
 
+    /**
+     * Verify a Stripe webhook. FAILS CLOSED: the webhook endpoint is public (Stripe
+     * calls it with no JWT), so the signature is the only thing standing between an
+     * attacker and marking arbitrary bookings PAID. If Stripe is disabled or the
+     * webhook secret is unset, no legitimate Stripe call can be verified, so we
+     * reject rather than trust an unauthenticated caller.
+     */
     public boolean verifyWebhookEvent(String payload, String sigHeader) {
-        if (!stripeEnabled || stripeSecretKey.isBlank()) return true;
+        if (!stripeEnabled || stripeSecretKey.isBlank()) {
+            log.warn("Rejecting webhook: Stripe is disabled");
+            return false;
+        }
+        String webhookSecret = System.getenv("STRIPE_WEBHOOK_SECRET");
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            log.warn("Rejecting webhook: STRIPE_WEBHOOK_SECRET is not set");
+            return false;
+        }
         try {
-            String webhookSecret = System.getenv("STRIPE_WEBHOOK_SECRET");
-            if (webhookSecret == null || webhookSecret.isBlank()) return true;
             Webhook.constructEvent(payload, sigHeader, webhookSecret);
             return true;
         } catch (Exception ex) {

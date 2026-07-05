@@ -105,8 +105,14 @@ class WebSocketService {
         // SockJS handles onclose internally, but we can monitor through STOMP
         // The socket's onclose will be handled by SockJS/STOMP client automatically
 
+        // The broker authenticates the STOMP CONNECT frame and authorizes each
+        // subscription by business ownership, so we must present the JWT here — the
+        // SockJS handshake itself carries no identity.
+        const token = (typeof localStorage !== 'undefined' && localStorage.getItem('accessToken')) || '';
+        const connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
         this.stompClient.connect(
-          {},
+          connectHeaders,
           () => {
             clearTimeout(connectionTimeout);
             this.connected = true;
