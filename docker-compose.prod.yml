@@ -150,8 +150,10 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
       SERVICES_NOTIFICATION_URL: http://notification-service:8090
-      # Xmx300 + 100 meta + 80 native = 480m limit (largest service — most logic)
-      JAVA_TOOL_OPTIONS: "-Xmx300m -Xms100m -XX:MaxMetaspaceSize=100m -XX:+UseStringDeduplication -XX:+UseG1GC"
+      # Largest service (MVC + Security + JPA + WebSocket + tenant filter): 100m
+      # metaspace was exhausted under sustained load (OOM: Metaspace → 504s).
+      # Xmx300 + 160 meta + 80 native = 540m limit.
+      JAVA_TOOL_OPTIONS: "-Xmx300m -Xms100m -XX:MaxMetaspaceSize=160m -XX:+UseStringDeduplication -XX:+UseG1GC"
     depends_on:
       postgres:
         condition: service_healthy
@@ -165,7 +167,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 480m
+          memory: 540m
 
   business-service:
     image: ghcr.io/salon-dash/salon-hub/business-service:${IMAGE_TAG:-latest}
