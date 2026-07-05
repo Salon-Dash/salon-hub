@@ -161,9 +161,9 @@ export default function SalesPage() {
               ? `${Math.floor(item.durationMinutes / 60)}h ${item.durationMinutes % 60}min`.replace(/^0h /, '').replace(/ 0min$/, 'min')
               : 'N/A',
             price: item.price 
-              ? `${item.price.toFixed(2)} PLN`
+              ? `${item.price.toFixed(2)} zł`
               : item.priceType === 'FROM' 
-                ? `From ${item.price?.toFixed(2) || '0.00'} PLN`
+                ? `From ${item.price?.toFixed(2) || '0.00'} zł`
                 : 'Price on request',
             color: item.color || 'gray',
             type: (item.serviceType === 'COMBO' ? 'combo' : 'service') as 'service' | 'combo',
@@ -355,7 +355,7 @@ export default function SalesPage() {
           // Format payment method - for split payments, show cash and card amounts
           let paymentMethodDisplay: string;
           if (sale.paymentMethod === 'SPLIT' && sale.splitCashAmount && sale.splitCardAmount) {
-            paymentMethodDisplay = `Cash: ${sale.splitCashAmount.toFixed(2)} PLN, Card: ${sale.splitCardAmount.toFixed(2)} PLN`;
+            paymentMethodDisplay = `Cash: ${sale.splitCashAmount.toFixed(2)} zł, Card: ${sale.splitCardAmount.toFixed(2)} zł`;
           } else {
             const paymentMethodMap: Record<string, string> = {
               'CASH': 'Cash',
@@ -375,7 +375,7 @@ export default function SalesPage() {
             date: dateStr,
             description: sale.notes || '',
             status: sale.status === 'COMPLETED' ? 'PAID' : sale.status,
-            amount: `${sale.total.toFixed(2)} PLN`,
+            amount: `${sale.total.toFixed(2)} zł`,
             paymentMethod: paymentMethodDisplay,
             splitCashAmount: sale.splitCashAmount,
             splitCardAmount: sale.splitCardAmount,
@@ -387,27 +387,27 @@ export default function SalesPage() {
               name: item.serviceName,
               duration: item.duration,
               quantity: item.quantity,
-              price: `${(item.unitPrice * item.quantity).toFixed(2)} PLN`,
+              price: `${(item.unitPrice * item.quantity).toFixed(2)} zł`,
             })),
             staffName: sale.staffName,
             tax: {
               rate: `${taxRate}%`,
-              netWorth: `${netWorth.toFixed(2)} PLN`,
-              taxAmount: `${taxAmount.toFixed(2)} PLN`,
-              grossValue: `${sale.total.toFixed(2)} PLN`,
+              netWorth: `${netWorth.toFixed(2)} zł`,
+              taxAmount: `${taxAmount.toFixed(2)} zł`,
+              grossValue: `${sale.total.toFixed(2)} zł`,
             },
-            addition: `${sale.subtotal.toFixed(2)} PLN`,
+            addition: `${sale.subtotal.toFixed(2)} zł`,
             discount: sale.discountAmount > 0 
-              ? `${sale.discountAmount.toFixed(2)} PLN` 
+              ? `${sale.discountAmount.toFixed(2)} zł` 
               : sale.discountPercent > 0 
                 ? `${sale.discountPercent.toFixed(0)}%`
-                : '0.00 PLN',
+                : '0.00 zł',
             tip: sale.tipAmount > 0 
-              ? `${sale.tipAmount.toFixed(2)} PLN` 
+              ? `${sale.tipAmount.toFixed(2)} zł` 
               : sale.tipPercent > 0 
                 ? `${sale.tipPercent.toFixed(0)}%`
-                : '0.00 PLN',
-            total: `${sale.total.toFixed(2)} PLN`,
+                : '0.00 zł',
+            total: `${sale.total.toFixed(2)} zł`,
             paidDate: format(new Date(`${sale.saleDate}T${saleTime}`), 'dd/MM/yyyy, HH:mm'),
             isoDate: new Date(`${sale.saleDate}T${saleTime}`).toISOString(),
             sale: sale,
@@ -480,9 +480,9 @@ export default function SalesPage() {
           ? `${Math.floor(service.durationMinutes / 60)}h ${service.durationMinutes % 60}min`.replace(/^0h /, '').replace(/ 0min$/, 'min')
           : 'N/A',
         price: service.price 
-          ? `${service.price.toFixed(2)} PLN`
+          ? `${service.price.toFixed(2)} zł`
           : service.priceType === 'FROM' 
-            ? `From ${service.price?.toFixed(2) || '0.00'} PLN`
+            ? `From ${service.price?.toFixed(2) || '0.00'} zł`
             : 'Price on request',
         color: service.color || 'gray',
         type: (service.serviceType === 'COMBO' ? 'combo' : 'service') as 'service' | 'combo',
@@ -513,9 +513,9 @@ export default function SalesPage() {
             ? `${Math.floor(item.durationMinutes / 60)}h ${item.durationMinutes % 60}min`.replace(/^0h /, '').replace(/ 0min$/, 'min')
             : 'N/A',
           price: item.price 
-            ? `${item.price.toFixed(2)} PLN`
+            ? `${item.price.toFixed(2)} zł`
             : item.priceType === 'FROM' 
-              ? `From ${item.price?.toFixed(2) || '0.00'} PLN`
+              ? `From ${item.price?.toFixed(2) || '0.00'} zł`
               : 'Price on request',
           color: item.color || 'gray',
           type: (item.serviceType === 'COMBO' ? 'combo' : 'service') as 'service' | 'combo',
@@ -856,9 +856,9 @@ export default function SalesPage() {
                                     ? `${Math.floor(service.durationMinutes / 60)}h ${service.durationMinutes % 60}min`.replace(/^0h /, '').replace(/ 0min$/, 'min')
                                     : 'N/A',
                                   price: service.price 
-                                    ? `${service.price.toFixed(2)} PLN`
+                                    ? `${service.price.toFixed(2)} zł`
                                     : service.priceType === 'FROM' 
-                                      ? `From ${service.price?.toFixed(2) || '0.00'} PLN`
+                                      ? `From ${service.price?.toFixed(2) || '0.00'} zł`
                                       : 'Price on request',
                                   color: service.color || 'gray',
                                   type: (service.serviceType === 'COMBO' ? 'combo' : 'service') as 'service' | 'combo',
@@ -954,9 +954,9 @@ export default function SalesPage() {
                             name: addon.name,
                             duration: 'N/A',
                             price: addon.price 
-                              ? `${addon.price.toFixed(2)} PLN`
+                              ? `${addon.price.toFixed(2)} zł`
                               : addon.priceType === 'FROM' 
-                                ? `From ${addon.price?.toFixed(2) || '0.00'} PLN`
+                                ? `From ${addon.price?.toFixed(2) || '0.00'} zł`
                                 : 'Price on request',
                             color: addon.color || 'gray',
                             type: 'service',
@@ -1041,7 +1041,7 @@ export default function SalesPage() {
                                 id: appointment.serviceId.toString(),
                                 name: appointment.serviceName || 'Service',
                                 duration: `${appointment.startTime} - ${appointment.endTime}`,
-                                price: appointment.price ? `${appointment.price.toFixed(2)} PLN` : 'Price on request',
+                                price: appointment.price ? `${appointment.price.toFixed(2)} zł` : 'Price on request',
                                 color: appointment.color || 'gray',
                                 type: 'service',
                                 serviceId: appointment.serviceId,
@@ -1114,7 +1114,7 @@ export default function SalesPage() {
                                   {appointment.price && (
                                     <div className="text-right">
                                       <div className="text-base font-bold text-gray-900">
-                                        {appointment.price.toFixed(2)} PLN
+                                        {appointment.price.toFixed(2)} zł
                                       </div>
                                     </div>
                                   )}
@@ -1190,7 +1190,7 @@ export default function SalesPage() {
                   <div className="text-right">
                     <p className="text-xs text-gray-500 mb-1">TOGETHER</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {calculateTotal().toFixed(2)} PLN
+                      {calculateTotal().toFixed(2)} zł
                     </p>
                   </div>
                 </div>
@@ -1276,7 +1276,7 @@ export default function SalesPage() {
                           } else {
                             // Regular payment - add to the method
                             const method = t.paymentMethod.split(':')[0].trim(); // Extract method name if it contains ":"
-                            const amount = parseFloat(t.amount.replace(' PLN', '').replace(',', '.'));
+                            const amount = parseFloat(t.amount.replace(' zł', '').replace(',', '.'));
                             methodTotals[method] = (methodTotals[method] || 0) + amount;
                           }
                         });
@@ -1284,7 +1284,7 @@ export default function SalesPage() {
                         return Object.entries(methodTotals).map(([method, amount]) => (
                           <div key={method} className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">{method}</span>
-                            <span className="font-medium text-gray-900">{amount.toFixed(2)} PLN</span>
+                            <span className="font-medium text-gray-900">{amount.toFixed(2)} zł</span>
                           </div>
                         ));
                       })()}
@@ -1294,9 +1294,9 @@ export default function SalesPage() {
                         <span className="text-sm font-medium text-gray-900">Together</span>
                         <span className="text-lg font-bold text-gray-900">
                           {transactions.reduce((sum, t) => {
-                            const amount = parseFloat(t.amount.replace(' PLN', '').replace(',', '.'));
+                            const amount = parseFloat(t.amount.replace(' zł', '').replace(',', '.'));
                             return sum + amount;
-                          }, 0).toFixed(2)} PLN
+                          }, 0).toFixed(2)} zł
                         </span>
                       </div>
                     </div>
@@ -1499,9 +1499,9 @@ export default function SalesPage() {
                                 Paid • Split payment • {selectedTransaction.paidDate}
                               </p>
                               <div className="text-sm text-gray-700">
-                                <span>Cash: {selectedTransaction.splitCashAmount.toFixed(2)} PLN</span>
+                                <span>Cash: {selectedTransaction.splitCashAmount.toFixed(2)} zł</span>
                                 <span className="mx-2">•</span>
-                                <span>Card: {selectedTransaction.splitCardAmount.toFixed(2)} PLN</span>
+                                <span>Card: {selectedTransaction.splitCardAmount.toFixed(2)} zł</span>
                               </div>
                             </div>
                           ) : (

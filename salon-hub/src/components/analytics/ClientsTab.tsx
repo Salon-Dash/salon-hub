@@ -62,7 +62,7 @@ export default function ClientsTab({ data }: ClientsTabProps) {
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Avg Client Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{averageClientValue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{averageClientValue.toFixed(2)} zł</div>
             {averageVisitsPerClient > 0 && (
               <div className="text-xs text-muted-foreground mt-1">{averageVisitsPerClient.toFixed(1)} avg visits</div>
             )}
@@ -91,12 +91,12 @@ export default function ClientsTab({ data }: ClientsTabProps) {
                     <div>
                       <p className="font-semibold text-sm">{client.clientName || 'Unknown Client'}</p>
                       <p className="text-xs text-muted-foreground">
-                        {client.totalBookings ?? 0} bookings • Avg: £{(client.averageTicket ?? 0).toFixed(2)}
+                        {client.totalBookings ?? 0} bookings • Avg: {(client.averageTicket ?? 0).toFixed(2)} zł
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-status-completed text-base">£{(client.totalSpent ?? 0).toFixed(2)}</div>
+                    <div className="font-bold text-status-completed text-base">{(client.totalSpent ?? 0).toFixed(2)} zł</div>
                     {client.lastVisitDaysAgo !== null && client.lastVisitDaysAgo !== undefined && (
                       <div className="text-xs text-muted-foreground">
                         {client.lastVisitDaysAgo === 0 ? 'Today' : `${client.lastVisitDaysAgo} days ago`}
@@ -129,7 +129,7 @@ export default function ClientsTab({ data }: ClientsTabProps) {
                     <span className="text-sm text-muted-foreground">{(segment.percentage ?? 0).toFixed(1)}%</span>
                   </div>
                   <div className="text-2xl font-bold mb-1">{segment.count ?? 0}</div>
-                  <div className="text-sm text-muted-foreground">£{(segment.totalRevenue ?? 0).toFixed(2)} revenue</div>
+                  <div className="text-sm text-muted-foreground">{(segment.totalRevenue ?? 0).toFixed(2)} zł revenue</div>
                 </div>
               ))}
             </div>

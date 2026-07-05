@@ -17,7 +17,7 @@ export default function ServicesTab({ data }: ServicesTabProps) {
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Avg Service Price</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{data.averageServicePrice.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{data.averageServicePrice.toFixed(2)} zł</div>
           </CardContent>
         </Card>
         <Card className="border-border/60 shadow-sm">
@@ -64,9 +64,9 @@ export default function ServicesTab({ data }: ServicesTabProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-status-completed text-base">£{service.revenue.toFixed(2)}</div>
+                    <div className="font-bold text-status-completed text-base">{service.revenue.toFixed(2)} zł</div>
                     <div className="text-xs text-muted-foreground">
-                      Avg: £{service.averagePrice.toFixed(2)} • {service.revenuePercentage.toFixed(1)}% of total
+                      Avg: {service.averagePrice.toFixed(2)} zł • {service.revenuePercentage.toFixed(1)}% of total
                     </div>
                   </div>
                 </div>
@@ -94,12 +94,12 @@ export default function ServicesTab({ data }: ServicesTabProps) {
                     <span className="font-semibold">{category.categoryName}</span>
                     <span className="text-sm text-muted-foreground">{category.revenuePercentage.toFixed(1)}%</span>
                   </div>
-                  <div className="text-xl font-bold mb-1">£{category.totalRevenue.toFixed(2)}</div>
+                  <div className="text-xl font-bold mb-1">{category.totalRevenue.toFixed(2)} zł</div>
                   <div className="text-sm text-muted-foreground">
                     {category.totalBookings} bookings • {category.serviceCount} services
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Avg price: £{category.averageServicePrice.toFixed(2)}
+                    Avg price: {category.averageServicePrice.toFixed(2)} zł
                   </div>
                 </div>
               ))}

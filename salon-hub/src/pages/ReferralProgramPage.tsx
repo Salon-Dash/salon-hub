@@ -75,8 +75,8 @@ export default function ReferralProgramPage() {
   };
 
   const formatCurrency = (amount: number | null | undefined) => {
-    if (amount === null || amount === undefined) return "£0.00";
-    return `£${amount.toFixed(2)}`;
+    if (amount === null || amount === undefined) return "0.00 zł";
+    return `${amount.toFixed(2)} zł`;
   };
 
   const getStatusBadge = (status: string) => {

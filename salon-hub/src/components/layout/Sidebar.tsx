@@ -402,6 +402,7 @@ export function Sidebar() {
               <TooltipTrigger asChild>
                 <NavLink
                   to={fullPath}
+                  aria-label={item.label}
                   className={cn(
                     "group relative flex items-center justify-center w-12 h-12 rounded-lg transition-all duration-200",
                     !isActive && "hover:bg-white/5"

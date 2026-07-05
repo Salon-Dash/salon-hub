@@ -451,11 +451,11 @@ export default function AnalyticsPage() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Revenue Lost (Cancellations)</p>
-                        <p className="text-2xl font-bold">£{cancellations.revenueLostToCancellations?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{cancellations.revenueLostToCancellations?.toFixed(2)} zł</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Revenue Lost (No-Shows)</p>
-                        <p className="text-2xl font-bold">£{cancellations.revenueLostToNoShows?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{cancellations.revenueLostToNoShows?.toFixed(2)} zł</p>
                       </div>
                     </div>
                   </CardContent>
@@ -513,7 +513,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Average CLV</p>
-                        <p className="text-2xl font-bold">£{customerRetention.averageCustomerLifetimeValue?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{customerRetention.averageCustomerLifetimeValue?.toFixed(2)} zł</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Avg Visits/Customer</p>
@@ -546,7 +546,7 @@ export default function AnalyticsPage() {
                     <div className="grid grid-cols-4 gap-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Total Profit</p>
-                        <p className="text-2xl font-bold">£{profitability.totalProfit?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{profitability.totalProfit?.toFixed(2)} zł</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Profit Margin</p>
@@ -554,11 +554,11 @@ export default function AnalyticsPage() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Avg Profit/Booking</p>
-                        <p className="text-2xl font-bold">£{profitability.averageProfitPerBooking?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{profitability.averageProfitPerBooking?.toFixed(2)} zł</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Total Revenue</p>
-                        <p className="text-2xl font-bold">£{profitability.totalRevenue?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{profitability.totalRevenue?.toFixed(2)} zł</p>
                       </div>
                     </div>
                   </CardContent>
@@ -732,7 +732,7 @@ export default function AnalyticsPage() {
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-muted-foreground">Average Revenue/Hour</p>
-                        <p className="text-2xl font-bold">£{revenuePerHour.averageRevenuePerHour?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{revenuePerHour.averageRevenuePerHour?.toFixed(2)} zł</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Best Hour</p>
@@ -740,7 +740,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Peak Hour Revenue</p>
-                        <p className="text-2xl font-bold">£{revenuePerHour.peakHourRevenue?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{revenuePerHour.peakHourRevenue?.toFixed(2)} zł</p>
                       </div>
                     </div>
                   </CardContent>
@@ -769,11 +769,11 @@ export default function AnalyticsPage() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Avg First Visit Value</p>
-                        <p className="text-2xl font-bold">£{acquisition.averageFirstVisitValue?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{acquisition.averageFirstVisitValue?.toFixed(2)} zł</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Acquisition Cost</p>
-                        <p className="text-2xl font-bold">£{acquisition.customerAcquisitionCost?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{acquisition.customerAcquisitionCost?.toFixed(2)} zł</p>
                       </div>
                     </div>
                   </CardContent>
@@ -802,11 +802,11 @@ export default function AnalyticsPage() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Bundle Revenue</p>
-                        <p className="text-2xl font-bold">£{bundles.bundleRevenue?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{bundles.bundleRevenue?.toFixed(2)} zł</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Avg Bundle Value</p>
-                        <p className="text-2xl font-bold">£{bundles.averageBundleValue?.toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{bundles.averageBundleValue?.toFixed(2)} zł</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Revenue %</p>

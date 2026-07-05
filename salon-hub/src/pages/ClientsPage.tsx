@@ -176,8 +176,8 @@ export default function ClientsPage() {
 
   // Format currency
   const formatCurrency = (amount: number | null) => {
-    if (amount === null || amount === undefined) return "£0.00";
-    return `£${amount.toFixed(2)}`;
+    if (amount === null || amount === undefined) return "0.00 zł";
+    return `${amount.toFixed(2)} zł`;
   };
 
   // Format date

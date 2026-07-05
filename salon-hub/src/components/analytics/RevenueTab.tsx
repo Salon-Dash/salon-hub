@@ -18,7 +18,7 @@ export default function RevenueTab({ data }: RevenueTabProps) {
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Total Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{data.totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{data.totalRevenue.toFixed(2)} zł</div>
           </CardContent>
         </Card>
         <Card className="border-border/60 shadow-sm">
@@ -26,7 +26,7 @@ export default function RevenueTab({ data }: RevenueTabProps) {
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Avg Daily Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{data.averageDailyRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{data.averageDailyRevenue.toFixed(2)} zł</div>
           </CardContent>
         </Card>
         <Card className="border-border/60 shadow-sm">
@@ -34,7 +34,7 @@ export default function RevenueTab({ data }: RevenueTabProps) {
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Peak Day</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{data.peakDayRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{data.peakDayRevenue.toFixed(2)} zł</div>
           </CardContent>
         </Card>
         <Card className="border-border/60 shadow-sm">
@@ -42,7 +42,7 @@ export default function RevenueTab({ data }: RevenueTabProps) {
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Lowest Day</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">£{data.lowestDayRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{data.lowestDayRevenue.toFixed(2)} zł</div>
           </CardContent>
         </Card>
       </div>
@@ -64,7 +64,7 @@ export default function RevenueTab({ data }: RevenueTabProps) {
                     <div 
                       className="w-full bg-gradient-to-t from-status-completed to-status-completed/60 rounded-t transition-all cursor-pointer"
                       style={{ height: `${height}%`, minHeight: height > 0 ? '4px' : '0' }}
-                      title={`${format(new Date(day.date), "MMM dd")}: £${day.revenue.toFixed(2)}`}
+                      title={`${format(new Date(day.date), "MMM dd")}: ${day.revenue.toFixed(2)} zł`}
                     />
                     <span className="text-[10px] text-muted-foreground">
                       {format(new Date(day.date), "MMM dd")}
@@ -96,7 +96,7 @@ export default function RevenueTab({ data }: RevenueTabProps) {
                     <div 
                       className="w-full bg-gradient-to-t from-appointment-blue to-appointment-blue/60 rounded-t transition-all cursor-pointer"
                       style={{ height: `${height}%`, minHeight: height > 0 ? '2px' : '0' }}
-                      title={`${hour.hour}:00 - £${hour.revenue.toFixed(2)}`}
+                      title={`${hour.hour}:00 - ${hour.revenue.toFixed(2)} zł`}
                     />
                     <span className="text-[9px] text-muted-foreground">{hour.hour}</span>
                   </div>
@@ -128,7 +128,7 @@ export default function RevenueTab({ data }: RevenueTabProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-lg">£{method.revenue.toFixed(2)}</div>
+                    <div className="font-bold text-lg">{method.revenue.toFixed(2)} zł</div>
                     <div className="text-xs text-muted-foreground">{method.percentage.toFixed(1)}%</div>
                   </div>
                 </div>
@@ -150,7 +150,7 @@ export default function RevenueTab({ data }: RevenueTabProps) {
               {Object.entries(data.revenueByDayOfWeek).map(([day, revenue]) => (
                 <div key={day} className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10 border border-border/30">
                   <span className="font-semibold">{day}</span>
-                  <span className="font-bold text-lg">£{revenue.toFixed(2)}</span>
+                  <span className="font-bold text-lg">{revenue.toFixed(2)} zł</span>
                 </div>
               ))}
             </div>
