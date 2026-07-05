@@ -2748,7 +2748,7 @@ export default function StaffPage() {
 
             <div className="space-y-2">
               <Label>
-                {commissionRuleForm.type === CommissionType.PERCENTAGE ? "Percentage (%)" : "Fixed Amount ($)"}
+                {commissionRuleForm.type === CommissionType.PERCENTAGE ? "Percentage (%)" : "Fixed Amount (zł)"}
               </Label>
               <Input
                 type="number"
