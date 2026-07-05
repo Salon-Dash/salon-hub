@@ -23,9 +23,17 @@ public class BusinessController {
 
     /** POST /api/businesses — create a new business */
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createBusiness(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<Map<String, Object>> createBusiness(
+            @RequestBody Map<String, Object> body,
+            @RequestHeader(value = "X-User-Id", required = false) String callerId) {
         Long ownerId = body.get("ownerId") != null
                 ? Long.parseLong(body.get("ownerId").toString()) : null;
+        // Never persist an ownerless business: the tenant filter treats owner_id IS NULL
+        // as world-owned, so any authenticated user could then read/mutate it. Default
+        // the owner to the authenticated creator when not explicitly provided.
+        if (ownerId == null && callerId != null && !callerId.isBlank()) {
+            try { ownerId = Long.parseLong(callerId.trim()); } catch (NumberFormatException ignored) { }
+        }
         String name = (String) body.getOrDefault("name", "My Business");
         String category = (String) body.getOrDefault("category", null);
         String address = (String) body.getOrDefault("address", null);

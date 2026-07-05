@@ -83,8 +83,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOriginPatterns(
                     "http://localhost:5173",
                     "http://localhost:3000",
+                    // Named production origin only — the broad "https://*.vercel.app"
+                    // wildcard let any Vercel-hosted site open a handshake.
                     "https://salon-hub-omega.vercel.app",
-                    "https://*.vercel.app",
                     // Dashboard served directly from the VPS (nginx) — same origin as /ws.
                     // Without this the browser SockJS handshake is rejected and realtime
                     // calendar updates silently stop working on the VPS deployment.

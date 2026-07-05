@@ -284,6 +284,11 @@ public class BookingController {
         if (existing == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found: " + bookingId);
         }
+        // Require date/times — a booking always has them, and toAppointment()/Time.valueOf
+        // would NPE (500) on null. Mirrors createBooking's required-field check.
+        if (request.appointmentDate() == null || request.startTime() == null || request.endTime() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "appointmentDate, startTime, and endTime are required");
+        }
         // Validate time order
         if (request.startTime() != null && request.endTime() != null
                 && !request.startTime().isBefore(request.endTime())) {

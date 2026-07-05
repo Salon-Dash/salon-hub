@@ -50,6 +50,13 @@ public class TimeOffController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TimeOffItemDto create(@RequestBody CreateTimeOffRequest request) {
+        // Without a businessId the tenant filter can't resolve the target tenant and
+        // skips its ownership check, letting a caller create time-off against another
+        // business's staff. Require it so ownership is always enforced.
+        if (request.businessId() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "businessId is required");
+        }
         return timeOffService.create(request);
     }
 

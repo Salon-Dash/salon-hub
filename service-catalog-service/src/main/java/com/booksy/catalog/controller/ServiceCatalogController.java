@@ -109,6 +109,9 @@ public class ServiceCatalogController {
     @PostMapping("/api/categories")
     @ResponseStatus(HttpStatus.CREATED)
     public CategoryDto createCategory(@RequestBody Map<String, Object> body) {
+        if (body.get("businessId") == null)
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "businessId is required");
         Long businessId = Long.parseLong(body.get("businessId").toString());
         String name = (String) body.get("name");
         String description = (String) body.getOrDefault("description", null);

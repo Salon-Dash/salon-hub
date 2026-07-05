@@ -64,14 +64,28 @@ public class ShiftController {
     public Map<String, Object> createShift(
             @PathVariable Long businessId,
             @RequestBody Map<String, Object> body) {
+        if (body.get("staffId") == null) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "staffId is required");
         Long staffId = Long.parseLong(body.get("staffId").toString());
         Object dateVal = body.containsKey("shiftDate") ? body.get("shiftDate") : body.get("date");
         if (dateVal == null) throw new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.BAD_REQUEST, "shiftDate is required");
         LocalDate shiftDate = LocalDate.parse(dateVal.toString());
+        if (body.get("startTime") == null || body.get("endTime") == null)
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "startTime and endTime are required");
         String startTime = body.get("startTime").toString();
         String endTime = body.get("endTime").toString();
         String notes = body.containsKey("notes") ? (String) body.get("notes") : null;
+
+        // The path businessId is owner-verified by the tenant filter; make sure the
+        // staff member actually belongs to it so a shift can't be created against
+        // another tenant's staff.
+        Long staffBusinessId = jdbc.query("SELECT business_id FROM staff WHERE id = ?",
+                rs -> rs.next() ? rs.getLong(1) : null, staffId);
+        if (staffBusinessId != null && !staffBusinessId.equals(businessId))
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN, "Staff does not belong to business " + businessId);
 
         Long id = jdbc.queryForObject(
                 "INSERT INTO shifts (business_id, staff_id, shift_date, start_time, end_time, notes, created_at, updated_at) " +

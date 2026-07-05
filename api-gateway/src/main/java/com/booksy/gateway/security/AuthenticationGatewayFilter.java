@@ -58,7 +58,8 @@ public class AuthenticationGatewayFilter implements GlobalFilter, Ordered {
         boolean alwaysPublic = path.startsWith("/api/auth/")
                 || path.startsWith("/api/public/")
                 || path.equals("/ws") || path.startsWith("/ws/")
-                || path.startsWith("/actuator/")
+                // Only the health probe is public (used by the container healthcheck);
+                // other actuator endpoints (metrics/prometheus/mappings) stay closed.
                 || path.equals("/actuator/health");
         if (alwaysPublic) return true;
         // Business hours are public salon info that the customer app displays while
