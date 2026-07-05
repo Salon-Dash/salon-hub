@@ -93,7 +93,7 @@ async function toUpcomingSnapshotFromBooking(booking: CustomerBooking): Promise<
     // Fall back to booking-level placeholders when profile fetch fails.
   }
   const activityParts = [serviceName];
-  if (typeof servicePrice === 'number') activityParts.push(`${servicePrice} CZK`);
+  if (typeof servicePrice === 'number') activityParts.push(`${servicePrice} zł`);
   if (staffName) activityParts.push(staffName);
 
   return {
@@ -107,7 +107,7 @@ async function toUpcomingSnapshotFromBooking(booking: CustomerBooking): Promise<
     activitySubtitle: activityParts.join(' • '),
     totalCzk: servicePrice ?? 0,
     serviceName,
-    priceLabel: typeof servicePrice === 'number' ? `${servicePrice} CZK` : '—',
+    priceLabel: typeof servicePrice === 'number' ? `${servicePrice} zł` : '—',
     mapRegion,
     addressFull,
   };

@@ -64,10 +64,10 @@ export function ActivityScreen({
       timeHeadline: start.toLocaleString(),
       startIso: start.toISOString(),
       durationLine,
-      activitySubtitle: `${booking.serviceName ?? 'Service'}${servicePrice != null ? ` • ${servicePrice} CZK` : ''}${booking.staffName ? ` • ${booking.staffName}` : ''}`,
+      activitySubtitle: `${booking.serviceName ?? 'Service'}${servicePrice != null ? ` • ${servicePrice} zł` : ''}${booking.staffName ? ` • ${booking.staffName}` : ''}`,
       totalCzk: servicePrice ?? 0,
       serviceName: booking.serviceName ?? 'Service',
-      priceLabel: servicePrice != null ? `${servicePrice} CZK` : '—',
+      priceLabel: servicePrice != null ? `${servicePrice} zł` : '—',
       mapRegion: { latitude: 50.06, longitude: 19.93, latitudeDelta: 0.05, longitudeDelta: 0.05 },
       addressFull: booking.companyName || `Salon #${booking.companyId}`,
     };

@@ -26,7 +26,7 @@ function formatDuration(minutes?: number) {
 
 function formatPrice(price?: number) {
   if (price == null) return "Price TBD";
-  return `$${price.toFixed(2)}`;
+  return `${price.toFixed(2)} zł`;
 }
 
 export default function ServicesPage() {

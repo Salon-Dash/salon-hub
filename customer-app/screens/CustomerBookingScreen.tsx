@@ -294,10 +294,10 @@ export function CustomerBookingScreen({
         heroImage: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1000&q=80',
         timeHeadline: new Date(created.startAt).toLocaleString(),
         durationLine: `${selectedService.durationMinutes} min duration`,
-        activitySubtitle: `${selectedService.name} • ${totalPrice} CZK`,
+        activitySubtitle: `${selectedService.name} • ${totalPrice} zł`,
         totalCzk: totalPrice,
         serviceName: selectedService.name,
-        priceLabel: `${totalPrice} CZK`,
+        priceLabel: `${totalPrice} zł`,
         mapRegion: { latitude: 50.06, longitude: 19.93, latitudeDelta: 0.05, longitudeDelta: 0.05 },
         addressFull: created.companyName,
       });
@@ -367,7 +367,7 @@ export function CustomerBookingScreen({
                       {service.description}
                     </Text>
                   ) : null}
-                  <Text style={[styles.serviceRowPrice, { fontFamily: fonts.semibold }]}>{service.price} CZK</Text>
+                  <Text style={[styles.serviceRowPrice, { fontFamily: fonts.semibold }]}>{service.price} zł</Text>
                 </View>
                 <View style={[styles.servicePickCircle, selected && styles.servicePickCircleOn]}>
                   {selected ? (
@@ -669,12 +669,12 @@ export function CustomerBookingScreen({
                     {selectedProfessionalLabel}
                   </Text>
                 </View>
-                <Text style={[styles.reviewServicePrice, { fontFamily: fonts.semibold }]}>{totalPrice} CZK</Text>
+                <Text style={[styles.reviewServicePrice, { fontFamily: fonts.semibold }]}>{totalPrice} zł</Text>
               </View>
               <View style={styles.reviewDivider} />
               <View style={styles.reviewTotalRow}>
                 <Text style={[styles.reviewTotalLabel, { fontFamily: fonts.bold }]}>Total</Text>
-                <Text style={[styles.reviewTotalValue, { fontFamily: fonts.bold }]}>{totalPrice} CZK</Text>
+                <Text style={[styles.reviewTotalValue, { fontFamily: fonts.bold }]}>{totalPrice} zł</Text>
               </View>
             </View>
           )}
@@ -735,7 +735,7 @@ export function CustomerBookingScreen({
       {step === 'services' || step === 'pickStaff' || step === 'datetime' || step === 'review' ? (
         <View style={[styles.singleFlowFooter, { paddingBottom: insets.bottom + 10 }]}>
           <View style={styles.servicesFooterLeft}>
-            <Text style={[styles.singleFlowPrice, { fontFamily: fonts.bold }]}>{totalPrice} CZK</Text>
+            <Text style={[styles.singleFlowPrice, { fontFamily: fonts.bold }]}>{totalPrice} zł</Text>
             <View style={styles.servicesFooterMetaRow}>
               <Ionicons name="bag-handle-outline" size={14} color={colors.textMuted} />
               <Text style={[styles.servicesFooterMeta, { fontFamily: fonts.regular }]}>

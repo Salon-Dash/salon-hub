@@ -104,7 +104,7 @@ export function BookingDetailsScreen({ fonts, booking, onBack, onCancel }: Props
             <View style={styles.divider} />
             <View style={styles.totalRow}>
               <Text style={[styles.totalText, { fontFamily: fonts.bold }]}>Total</Text>
-              <Text style={[styles.totalText, { fontFamily: fonts.bold }]}>{booking.totalCzk} CZK</Text>
+              <Text style={[styles.totalText, { fontFamily: fonts.bold }]}>{booking.totalCzk} zł</Text>
             </View>
           </View>
 

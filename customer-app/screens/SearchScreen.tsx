@@ -77,7 +77,7 @@ export function SearchScreen({ fonts, onPressVenue }: Props) {
         rating: salon.hasReviews ? 'RATED' : 'NEW',
         reviews: salon.hasReviews ? Math.max(1, 1 + index) : 0,
         serviceLabel: salon.businessAddress ?? 'Book your next service',
-        priceFrom: salon.minPrice != null ? `from ${Math.round(salon.minPrice)} CZK` : 'Price on request',
+        priceFrom: salon.minPrice != null ? `from ${Math.round(salon.minPrice)} zł` : 'Price on request',
         image: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=800&q=80',
         latitude: salon.latitude ?? 50.0614 + index * 0.005,
         longitude: salon.longitude ?? 19.9366 + index * 0.005,
@@ -249,7 +249,7 @@ export function SearchScreen({ fonts, onPressVenue }: Props) {
         </ScrollView>
         <View style={styles.activeFilterRow}>
           <Text style={[styles.activeFilterText, { fontFamily: fonts.regular }]}>
-            {maxPrice != null ? `Price <= ${maxPrice} CZK` : 'Price: any'}
+            {maxPrice != null ? `Price <= ${maxPrice} zł` : 'Price: any'}
           </Text>
           <Text style={[styles.activeFilterText, { fontFamily: fonts.regular }]}>
             Amenity:{' '}

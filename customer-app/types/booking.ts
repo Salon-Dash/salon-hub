@@ -7,7 +7,7 @@ export type ConfirmedBookingSnapshot = {
   timeHeadline: string;
   startIso: string;
   durationLine: string;
-  /** e.g. "1 hr • 600 CZK • Pánský střih" */
+  /** e.g. "1 hr • 600 zł • Pánský střih" */
   activitySubtitle: string;
   totalCzk: number;
   serviceName: string;

@@ -140,7 +140,7 @@ export default function InventoryPage() {
               {loading ? (
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               ) : (
-                <div className="text-3xl font-bold text-appointment-purple">${totalValue.toFixed(2)}</div>
+                <div className="text-3xl font-bold text-appointment-purple">{totalValue.toFixed(2)} zł</div>
               )}
             </CardContent>
           </Card>
@@ -233,7 +233,7 @@ export default function InventoryPage() {
                       {addon.priceType ?? "FIXED"}
                     </Badge>
                     <span className="font-bold text-status-completed text-base">
-                      {addon.price != null ? `$${addon.price.toFixed(2)}` : "Price TBD"}
+                      {addon.price != null ? `${addon.price.toFixed(2)} zł` : "Price TBD"}
                     </span>
                   </div>
                 </CardContent>

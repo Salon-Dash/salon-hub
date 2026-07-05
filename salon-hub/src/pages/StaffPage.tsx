@@ -1567,7 +1567,7 @@ export default function StaffPage() {
                         <h3 className="font-semibold text-gray-900">Pending Commissions</h3>
                         <p className="text-sm text-gray-600 mt-1">
                           {pendingCommissions.length} commission{pendingCommissions.length !== 1 ? 's' : ''} • 
-                          Total: ${totalPending.toFixed(2)}
+                          Total: {totalPending.toFixed(2)} zł
                         </p>
                       </div>
                       {pendingCommissions.length > 0 && (
@@ -1622,7 +1622,7 @@ export default function StaffPage() {
                       const displayValue = ruleToShow 
                         ? ruleToShow.type === CommissionType.PERCENTAGE 
                           ? `${ruleToShow.value}%` 
-                          : `$${ruleToShow.value.toFixed(2)}`
+                          : `${ruleToShow.value.toFixed(2)} zł`
                         : "Not set";
                       
                       return (
@@ -1711,13 +1711,13 @@ export default function StaffPage() {
                                 {commission.category.replace('_', ' ')}
                               </p>
                               <p className="text-sm text-gray-600">
-                                Sale: ${commission.saleAmount.toFixed(2)} • 
+                                Sale: {commission.saleAmount.toFixed(2)} zł •
                                 Date: {new Date(commission.commissionDate).toLocaleDateString()}
                               </p>
                             </div>
                             <div className="text-right">
                               <p className="font-semibold text-green-600">
-                                ${commission.commissionAmount.toFixed(2)}
+                                {commission.commissionAmount.toFixed(2)} zł
                               </p>
                               <Badge variant="outline" className="mt-1">
                                 {commission.status}
@@ -2863,7 +2863,7 @@ export default function StaffPage() {
           <div className="space-y-4 py-4">
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600">Total Pending Commissions</p>
-              <p className="text-2xl font-bold text-gray-900">${totalPending.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">{totalPending.toFixed(2)} zł</p>
               <p className="text-xs text-gray-500 mt-1">{pendingCommissions.length} commission{pendingCommissions.length !== 1 ? 's' : ''}</p>
             </div>
 

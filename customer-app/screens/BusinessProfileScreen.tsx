@@ -263,7 +263,7 @@ export function BusinessProfileScreen({ businessId, fonts, onBack, onBookNow }: 
                   <View style={styles.rowLeft}>
                     <Text style={[styles.rowTitle, { fontFamily: fonts.semibold }]}>{service.name}</Text>
                     <Text style={[styles.rowMeta, { fontFamily: fonts.regular }]}>
-                      {service.durationMinutes} min · {service.price} CZK
+                      {service.durationMinutes} min · {service.price} zł
                     </Text>
                   </View>
                   <Pressable

@@ -21,7 +21,7 @@ export function SearchVenueCard({ venue, fonts, highlightReason, onPress }: Prop
   const reviews = venue.reviews.toLocaleString('fr-FR');
   const hasRealRating = venue.rating !== 'NEW' && venue.reviews > 0;
   const qualityTags = [
-    venue.minPriceCzk != null ? `From ${Math.round(venue.minPriceCzk)} CZK` : null,
+    venue.minPriceCzk != null ? `From ${Math.round(venue.minPriceCzk)} zł` : null,
     venue.hasTeam ? 'Team available' : null,
     venue.hasReviews ? 'Reviewed' : 'No reviews yet',
   ].filter(Boolean) as string[];
