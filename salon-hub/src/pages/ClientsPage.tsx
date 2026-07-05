@@ -98,8 +98,8 @@ export default function ClientsPage() {
     return invitations
       .filter(inv => inv.status === "PENDING")
       .map(inv => {
-        // Parse recipient name
-        const nameParts = inv.recipientName.split(" ");
+        // Parse recipient name (may be null for incomplete invitations)
+        const nameParts = (inv.recipientName || "").trim().split(" ").filter(Boolean);
         const firstName = nameParts[0] || "Pending";
         const lastName = nameParts.slice(1).join(" ") || null;
 
@@ -175,9 +175,10 @@ export default function ClientsPage() {
   const pendingClientsCount = getPendingClientsFromInvitations().length;
 
   // Format currency
-  const formatCurrency = (amount: number | null) => {
-    if (amount === null || amount === undefined) return "0.00 zł";
-    return `${amount.toFixed(2)} zł`;
+  const formatCurrency = (amount: number | string | null) => {
+    const n = typeof amount === "number" ? amount : Number(amount);
+    if (amount === null || amount === undefined || Number.isNaN(n)) return "0.00 zł";
+    return `${n.toFixed(2)} zł`;
   };
 
   // Format date

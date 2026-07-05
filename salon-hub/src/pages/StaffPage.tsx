@@ -1821,6 +1821,7 @@ export default function StaffPage() {
             {/* Floating Action Button */}
             <div className="p-4">
               <button
+                aria-label="Add staff"
                 onClick={() => navigate(getPath("add-staff"))}
                 className="w-12 h-12 bg-black text-white rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center"
               >
