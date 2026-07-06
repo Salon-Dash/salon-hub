@@ -17,6 +17,9 @@ export interface Service {
   staffIds?: number[];
   mobileService?: boolean;
   virtualAppointment?: boolean;
+  bookingInterval?: number; // minutes between offered start times; 0 = step by duration
+  paddingBefore?: number;   // buffer minutes reserved before the appointment
+  paddingAfter?: number;    // buffer minutes reserved after the appointment
 }
 
 export interface CreateServiceRequest {
@@ -34,6 +37,9 @@ export interface CreateServiceRequest {
   isVisible?: boolean;
   mobileService?: boolean;
   virtualAppointment?: boolean;
+  bookingInterval?: number;
+  paddingBefore?: number;
+  paddingAfter?: number;
 }
 
 export interface UpdateServiceRequest {
@@ -52,6 +58,9 @@ export interface UpdateServiceRequest {
   staffIds?: number[];
   mobileService?: boolean;
   virtualAppointment?: boolean;
+  bookingInterval?: number;
+  paddingBefore?: number;
+  paddingAfter?: number;
 }
 
 export interface ComboServiceItem {

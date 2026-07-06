@@ -38,6 +38,14 @@ const sidebarItems = [
   { id: "for-client", label: "FOR CLIENT" },
 ];
 
+// Scheduling fields in the SETTINGS tab are split into hours + minutes selects;
+// the backend stores a single total-minutes value per field.
+const toMinutes = (h: string, m: string) => (parseInt(h) || 0) * 60 + (parseInt(m) || 0);
+const splitMinutes = (total?: number) => {
+  const t = Math.max(0, total ?? 0);
+  return { hours: Math.floor(t / 60).toString(), minutes: (t % 60).toString() };
+};
+
 export default function AddServicePage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
@@ -135,11 +143,20 @@ export default function AddServicePage() {
           setSelectedStaff([]);
         }
         // Re-populate the SETTINGS toggles from the stored flags
+        const bi = splitMinutes(service.bookingInterval);
+        const pb = splitMinutes(service.paddingBefore);
+        const pa = splitMinutes(service.paddingAfter);
         setSettingsData((prev) => ({
           ...prev,
           allowSelfBooking: service.isVisible ?? true,
           mobileService: service.mobileService ?? false,
           virtualAppointments: service.virtualAppointment ?? false,
+          bookingIntervalHours: bi.hours,
+          bookingIntervalMinutes: bi.minutes,
+          paddingTimeBeforeHours: pb.hours,
+          paddingTimeBeforeMinutes: pb.minutes,
+          paddingTimeAfterHours: pa.hours,
+          paddingTimeAfterMinutes: pa.minutes,
         }));
       }
     }
@@ -171,8 +188,12 @@ export default function AddServicePage() {
         isVisible: settingsData.allowSelfBooking, // "Allow self-booking" gates visibility in the customer app
         mobileService: settingsData.mobileService,
         virtualAppointment: settingsData.virtualAppointments,
+        // Scheduling engine (Phase 2): all sent as total minutes.
+        bookingInterval: toMinutes(settingsData.bookingIntervalHours, settingsData.bookingIntervalMinutes),
+        paddingBefore: toMinutes(settingsData.paddingTimeBeforeHours, settingsData.paddingTimeBeforeMinutes),
+        paddingAfter: toMinutes(settingsData.paddingTimeAfterHours, settingsData.paddingTimeAfterMinutes),
       };
-      
+
       if (isEditMode && id) {
         await safeUpdateService(parseInt(id), serviceData);
         toast.success("Service updated successfully");
@@ -215,6 +236,9 @@ export default function AddServicePage() {
         isVisible: settingsData.allowSelfBooking,
         mobileService: settingsData.mobileService,
         virtualAppointment: settingsData.virtualAppointments,
+        bookingInterval: toMinutes(settingsData.bookingIntervalHours, settingsData.bookingIntervalMinutes),
+        paddingBefore: toMinutes(settingsData.paddingTimeBeforeHours, settingsData.paddingTimeBeforeMinutes),
+        paddingAfter: toMinutes(settingsData.paddingTimeAfterHours, settingsData.paddingTimeAfterMinutes),
       });
       toast.success("Service created successfully");
       // Reset form for next service
