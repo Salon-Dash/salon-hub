@@ -116,6 +116,9 @@ export type PublicService = {
   description: string | null;
   serviceType: string;
   category?: string | null;
+  priceType?: 'FIXED' | 'FROM' | 'RANGE' | string | null;
+  mobileService?: boolean | null;
+  virtualAppointment?: boolean | null;
 };
 
 export type PublicStaff = {

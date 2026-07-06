@@ -263,7 +263,9 @@ export function BusinessProfileScreen({ businessId, fonts, onBack, onBookNow }: 
                   <View style={styles.rowLeft}>
                     <Text style={[styles.rowTitle, { fontFamily: fonts.semibold }]}>{service.name}</Text>
                     <Text style={[styles.rowMeta, { fontFamily: fonts.regular }]}>
-                      {service.durationMinutes} min · {service.price} zł
+                      {service.durationMinutes} min · {service.priceType === 'FROM' ? `from ${service.price} zł` : service.priceType === 'RANGE' ? `${service.price} zł+` : `${service.price} zł`}
+                      {service.mobileService ? ' · 📍 Mobile' : ''}
+                      {service.virtualAppointment ? ' · 🎥 Online' : ''}
                     </Text>
                   </View>
                   <Pressable
