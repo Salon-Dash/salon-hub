@@ -81,7 +81,7 @@ export default function AddServicePage() {
   });
   const [formData, setFormData] = useState({
     serviceName: "",
-    serviceType: "",
+    serviceType: "standard",
     durationHours: "0",
     durationMinutes: "30",
     priceType: "FIXED",
@@ -114,7 +114,12 @@ export default function AddServicePage() {
         const minutes = (service.durationMinutes || 0) % 60;
         setFormData({
           serviceName: service.name || "",
-          serviceType: "",
+          // Re-populate the Service Type dropdown on edit. Legacy/empty values
+          // (e.g. the old hardcoded "SERVICE") fall back to "standard" so the
+          // Select always shows a valid option instead of a blank.
+          serviceType: ["standard", "package", "course"].includes(service.serviceType || "")
+            ? (service.serviceType as string)
+            : "standard",
           durationHours: hours.toString(),
           durationMinutes: minutes.toString(),
           priceType: service.priceType || "FIXED",
@@ -152,7 +157,7 @@ export default function AddServicePage() {
         durationMinutes: durationMinutes || undefined,
         price: formData.price ? parseFloat(formData.price) : undefined,
         priceType: formData.priceType as 'FIXED' | 'FROM' | 'RANGE',
-        serviceType: 'SERVICE' as const,
+        serviceType: formData.serviceType || 'standard',
         color: formData.color || undefined,
         categoryId: formData.categoryId && formData.categoryId !== "none" ? parseInt(formData.categoryId) : undefined,
         staffIds: selectedStaff, // Always send staffIds array (even if empty) so backend can update relationships
@@ -193,7 +198,7 @@ export default function AddServicePage() {
         durationMinutes: durationMinutes || undefined,
         price: formData.price ? parseFloat(formData.price) : undefined,
         priceType: formData.priceType as 'FIXED' | 'FROM' | 'RANGE',
-        serviceType: 'SERVICE' as const,
+        serviceType: formData.serviceType || 'standard',
         color: formData.color || undefined,
         categoryId: formData.categoryId && formData.categoryId !== "none" ? parseInt(formData.categoryId) : undefined,
         staffIds: selectedStaff, // Always send staffIds array (even if empty) so backend can update relationships
@@ -202,7 +207,7 @@ export default function AddServicePage() {
       // Reset form for next service
       setFormData({
         serviceName: "",
-        serviceType: "",
+        serviceType: "standard",
         durationHours: "0",
         durationMinutes: "30",
         priceType: "FIXED",

@@ -10,7 +10,7 @@ export interface Service {
   durationMinutes?: number;
   price?: number;
   priceType?: 'FIXED' | 'FROM' | 'RANGE';
-  serviceType?: 'SERVICE' | 'COMBO';
+  serviceType?: string;
   color?: string;
   isActive: boolean;
   isVisible: boolean;
@@ -24,7 +24,7 @@ export interface CreateServiceRequest {
   durationMinutes?: number;
   price?: number;
   priceType?: 'FIXED' | 'FROM' | 'RANGE';
-  serviceType?: 'SERVICE' | 'COMBO';
+  serviceType?: string;
   color?: string;
   comboServiceIds?: number[];
   timeBetweenMinutes?: number[];
@@ -38,7 +38,7 @@ export interface UpdateServiceRequest {
   durationMinutes?: number;
   price?: number;
   priceType?: 'FIXED' | 'FROM' | 'RANGE';
-  serviceType?: 'SERVICE' | 'COMBO';
+  serviceType?: string;
   color?: string;
   isActive?: boolean;
   isVisible?: boolean;
