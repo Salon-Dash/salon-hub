@@ -150,6 +150,21 @@ public class BookingController {
         return jdbcTemplate.query(sql.toString(), appointmentRowMapper, params.toArray());
     }
 
+    // Fetch a single appointment by id. The admin calendar's detail view calls
+    // GET /api/appointments/{id} (rewritten to /api/bookings/{id}); without this
+    // handler the request had no mapping and surfaced as a 500. Tenant ownership
+    // is already enforced by TenantAuthorizationFilter for this path.
+    @GetMapping("/{bookingId}")
+    public Appointment getBookingById(@PathVariable long bookingId) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    APPOINTMENT_SELECT + " FROM appointments WHERE id = ?",
+                    appointmentRowMapper, bookingId);
+        } catch (EmptyResultDataAccessException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found");
+        }
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
