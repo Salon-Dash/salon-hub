@@ -114,7 +114,11 @@ public class AvailabilityCalculationService {
                     getAllStaffTimeOff(staffList, date),
                     getBookedAppointments(studioId, date),
                     getServiceInfo(serviceId)
-                ).map(tuple -> {
+                )
+                // getStaffDetailsSync() blocks (WebClient .block()), which is illegal on
+                // the Reactor event loop; hop to a bounded-elastic worker for the mapping.
+                .publishOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                .map(tuple -> {
                     BusinessHoursResponse businessHours = tuple.getT1();
                     List<TimeOffResponse> timeOffs = tuple.getT2();
                     List<Appointment> appointments = tuple.getT3();
