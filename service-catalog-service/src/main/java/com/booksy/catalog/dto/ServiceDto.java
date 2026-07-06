@@ -19,5 +19,8 @@ public record ServiceDto(
     String priceType,
     List<Long> staffIds,
     Boolean mobileService,
-    Boolean virtualAppointment
+    Boolean virtualAppointment,
+    Integer bookingInterval,
+    Integer paddingBefore,
+    Integer paddingAfter
 ) {}

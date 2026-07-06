@@ -65,6 +65,9 @@ public class ServiceCatalogClient {
         private int id;
         private String name;
         private int durationMinutes;
+        private int bookingInterval; // minutes between offered start times; 0 = step by duration
+        private int paddingBefore;   // buffer minutes reserved before the appointment
+        private int paddingAfter;    // buffer minutes reserved after the appointment
 
         // getters and setters
         public int getId() { return id; }
@@ -73,5 +76,11 @@ public class ServiceCatalogClient {
         public void setName(String name) { this.name = name; }
         public int getDurationMinutes() { return durationMinutes; }
         public void setDurationMinutes(int durationMinutes) { this.durationMinutes = durationMinutes; }
+        public int getBookingInterval() { return bookingInterval; }
+        public void setBookingInterval(int bookingInterval) { this.bookingInterval = bookingInterval; }
+        public int getPaddingBefore() { return paddingBefore; }
+        public void setPaddingBefore(int paddingBefore) { this.paddingBefore = paddingBefore; }
+        public int getPaddingAfter() { return paddingAfter; }
+        public void setPaddingAfter(int paddingAfter) { this.paddingAfter = paddingAfter; }
     }
 }

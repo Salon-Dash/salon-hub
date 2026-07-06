@@ -1,5 +1,6 @@
 package com.booksy.booking.controller;
 
+import com.booksy.booking.dto.DailySlots;
 import com.booksy.booking.dto.ServiceAvailability;
 import com.booksy.booking.service.AvailabilityCalculationService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -47,6 +48,35 @@ public class PublicAvailabilityController {
             .doOnError(error -> log.error("Error calculating availability for studioId={}, serviceId={}: {}", studioId, serviceId, error.getMessage()));
     }
 
+
+    /**
+     * Phase 2: real bookable start times for a single date.
+     * Returns the actual free slots (HH:mm) for the service, optionally narrowed to
+     * one staff member, respecting business+staff hours, time-off, existing
+     * appointments, service duration, booking interval and padding.
+     */
+    @GetMapping("/slots")
+    @CircuitBreaker(name = "availabilityService", fallbackMethod = "getDailySlotsFallback")
+    public Mono<ResponseEntity<DailySlots>> getDailySlots(
+            @PathVariable int studioId,
+            @PathVariable int serviceId,
+            @RequestParam String date,
+            @RequestParam(required = false) Integer staffId) {
+
+        LocalDate day = LocalDate.parse(date);
+        log.info("Slots request: studioId={}, serviceId={}, date={}, staffId={}", studioId, serviceId, date, staffId);
+
+        return availabilityService.calculateDailySlots(studioId, serviceId, day, staffId)
+            .map(ResponseEntity::ok)
+            .doOnError(error -> log.error("Error computing slots for studioId={}, serviceId={}, date={}: {}",
+                    studioId, serviceId, date, error.getMessage()));
+    }
+
+    public Mono<ResponseEntity<DailySlots>> getDailySlotsFallback(
+            int studioId, int serviceId, String date, Integer staffId, Throwable t) {
+        log.warn("Circuit breaker fallback for slots. studioId={}, serviceId={}, date={}", studioId, serviceId, date);
+        return Mono.just(ResponseEntity.ok(DailySlots.empty(serviceId, date, 60)));
+    }
 
     /**
      * Fallback method when the availability service circuit breaker is open

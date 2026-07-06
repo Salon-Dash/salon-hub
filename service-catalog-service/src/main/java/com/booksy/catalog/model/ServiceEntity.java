@@ -69,6 +69,18 @@ public class ServiceEntity {
     @Builder.Default
     private Boolean virtualAppointment = false;
 
+    @Column(name = "booking_interval")
+    @Builder.Default
+    private Integer bookingInterval = 0;
+
+    @Column(name = "padding_before")
+    @Builder.Default
+    private Integer paddingBefore = 0;
+
+    @Column(name = "padding_after")
+    @Builder.Default
+    private Integer paddingAfter = 0;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

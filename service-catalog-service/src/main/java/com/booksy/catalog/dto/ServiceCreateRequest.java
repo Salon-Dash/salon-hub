@@ -16,5 +16,8 @@ public record ServiceCreateRequest(
     List<Long> staffIds,
     Boolean isVisible,
     Boolean mobileService,
-    Boolean virtualAppointment
+    Boolean virtualAppointment,
+    Integer bookingInterval,
+    Integer paddingBefore,
+    Integer paddingAfter
 ) {}

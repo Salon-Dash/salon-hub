@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -81,6 +82,129 @@ public class AvailabilityCalculationService {
                     });
             })
             .doOnError(error -> log.warn("Error calculating service availability: " + error.getMessage()));
+    }
+
+    private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
+
+    /**
+     * Phase 2 slot engine: compute the actual bookable start times for a service on
+     * a single date. Unlike {@link #calculateServiceAvailability} (a coarse count),
+     * this returns concrete wall-clock start times respecting:
+     *   business hours ∩ staff working hours − time-off − existing appointments,
+     * such that the service duration fits, stepped by the service's booking interval,
+     * with padding (buffer) reserved before/after each candidate slot.
+     *
+     * @param staffId optional — if non-null, only that staff's slots; otherwise the
+     *                union across all staff assigned to the service.
+     */
+    public Mono<DailySlots> calculateDailySlots(int studioId, int serviceId, LocalDate date, Integer staffId) {
+        if (date.isBefore(LocalDate.now())) {
+            return Mono.just(DailySlots.empty(serviceId, date.toString(), 60));
+        }
+        return getServiceStaff(serviceId)
+            .flatMap(allStaff -> {
+                List<AvailableMaster> staffList = staffId == null
+                    ? allStaff
+                    : allStaff.stream().filter(s -> s.getId() == staffId.intValue()).collect(Collectors.toList());
+                if (staffList.isEmpty()) {
+                    return Mono.just(DailySlots.empty(serviceId, date.toString(), 60));
+                }
+                return Mono.zip(
+                    getBusinessHours(studioId, date),
+                    getAllStaffTimeOff(staffList, date),
+                    getBookedAppointments(studioId, date),
+                    getServiceInfo(serviceId)
+                ).map(tuple -> {
+                    BusinessHoursResponse businessHours = tuple.getT1();
+                    List<TimeOffResponse> timeOffs = tuple.getT2();
+                    List<Appointment> appointments = tuple.getT3();
+                    ServiceCatalogClient.ServiceInfo info = tuple.getT4();
+
+                    int duration = info.getDurationMinutes() > 0 ? info.getDurationMinutes() : 60;
+                    if (!businessHours.isOpenOn(date)) {
+                        return DailySlots.empty(serviceId, date.toString(), duration);
+                    }
+                    int interval = info.getBookingInterval() > 0 ? info.getBookingInterval() : duration;
+                    int padBefore = Math.max(0, info.getPaddingBefore());
+                    int padAfter = Math.max(0, info.getPaddingAfter());
+
+                    TreeSet<LocalTime> slots = new TreeSet<>();
+                    for (AvailableMaster staff : staffList) {
+                        addStaffSlots(slots, staff, date, businessHours, timeOffs, appointments,
+                                      duration, interval, padBefore, padAfter);
+                    }
+                    List<String> formatted = slots.stream().map(HHMM::format).collect(Collectors.toList());
+                    log.debug("Slots for service {} on {} (staff {}): {} slots", serviceId, date, staffId, formatted.size());
+                    return new DailySlots(serviceId, date.toString(), duration, formatted);
+                });
+            })
+            .onErrorResume(e -> {
+                log.warn("Error computing daily slots for service {} on {}: {}", serviceId, date, e.getMessage());
+                return Mono.just(DailySlots.empty(serviceId, date.toString(), 60));
+            });
+    }
+
+    /**
+     * Add every free start time for one staff member on {@code date} to {@code out}.
+     * A candidate slot [start, start+duration] is rejected if its padded window
+     * [start-padBefore, start+duration+padAfter] overlaps any existing appointment,
+     * if it falls in the past (today), or if it runs past the effective window.
+     */
+    private void addStaffSlots(TreeSet<LocalTime> out, AvailableMaster staff, LocalDate date,
+            BusinessHoursResponse businessHours, List<TimeOffResponse> timeOffs,
+            List<Appointment> appointments, int duration, int interval, int padBefore, int padAfter) {
+
+        StaffResponse sd = getStaffDetailsSync(staff.getId());
+        if (sd == null) return;
+        DayOfWeek dow = date.getDayOfWeek();
+        if (!sd.isWorkingOn(dow)) return;
+        for (TimeOffResponse t : timeOffs) {
+            if (t.conflictsWith(staff.getId(), date)) return; // full-day block
+        }
+        LocalTime staffStart = sd.getWorkingStartTime(dow);
+        LocalTime staffEnd = sd.getWorkingEndTime(dow);
+        if (staffStart == null || staffEnd == null) return;
+
+        LocalTime effStart = businessHours.getStartTime().isAfter(staffStart) ? businessHours.getStartTime() : staffStart;
+        LocalTime effEnd = businessHours.getEndTime().isBefore(staffEnd) ? businessHours.getEndTime() : staffEnd;
+        if (!effStart.isBefore(effEnd)) return;
+
+        List<Appointment> busy = appointments.stream()
+            .filter(a -> a.getStaffId() == staff.getId()
+                    && date.equals(a.getAppointmentDate())
+                    && a.getStatus() != null && !"CANCELLED".equalsIgnoreCase(a.getStatus())
+                    && a.getStartTime() != null && a.getEndTime() != null)
+            .collect(Collectors.toList());
+
+        boolean isToday = date.equals(LocalDate.now());
+        LocalTime now = LocalTime.now();
+        int step = interval > 0 ? interval : (duration > 0 ? duration : 60);
+
+        for (LocalTime t = effStart; !t.plusMinutes(duration).isAfter(effEnd); t = t.plusMinutes(step)) {
+            if (isToday && t.isBefore(now)) continue;
+            LocalTime blockStart = minusClamped(t, padBefore);
+            LocalTime blockEnd = plusClamped(t.plusMinutes(duration), padAfter);
+            boolean conflict = false;
+            for (Appointment a : busy) {
+                if (blockStart.isBefore(a.getEndTime()) && a.getStartTime().isBefore(blockEnd)) {
+                    conflict = true;
+                    break;
+                }
+            }
+            if (!conflict) out.add(t);
+        }
+    }
+
+    private static LocalTime minusClamped(LocalTime t, int minutes) {
+        if (minutes <= 0) return t;
+        long s = t.toSecondOfDay() - minutes * 60L;
+        return s <= 0 ? LocalTime.MIN : LocalTime.ofSecondOfDay(s);
+    }
+
+    private static LocalTime plusClamped(LocalTime t, int minutes) {
+        if (minutes <= 0) return t;
+        long s = t.toSecondOfDay() + minutes * 60L;
+        return s >= 86400 ? LocalTime.MAX : LocalTime.ofSecondOfDay(s);
     }
 
     /**

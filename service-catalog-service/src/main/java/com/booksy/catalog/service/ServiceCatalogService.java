@@ -74,6 +74,9 @@ public class ServiceCatalogService {
         entity.setIsVisible(req.isVisible() != null ? req.isVisible() : true);
         entity.setMobileService(req.mobileService() != null ? req.mobileService() : false);
         entity.setVirtualAppointment(req.virtualAppointment() != null ? req.virtualAppointment() : false);
+        entity.setBookingInterval(req.bookingInterval() != null ? req.bookingInterval() : 0);
+        entity.setPaddingBefore(req.paddingBefore() != null ? req.paddingBefore() : 0);
+        entity.setPaddingAfter(req.paddingAfter() != null ? req.paddingAfter() : 0);
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         ServiceEntity saved = serviceRepository.save(entity);
@@ -123,6 +126,9 @@ public class ServiceCatalogService {
         if (req.isVisible() != null) entity.setIsVisible(req.isVisible());
         if (req.mobileService() != null) entity.setMobileService(req.mobileService());
         if (req.virtualAppointment() != null) entity.setVirtualAppointment(req.virtualAppointment());
+        if (req.bookingInterval() != null) entity.setBookingInterval(req.bookingInterval());
+        if (req.paddingBefore() != null) entity.setPaddingBefore(req.paddingBefore());
+        if (req.paddingAfter() != null) entity.setPaddingAfter(req.paddingAfter());
         entity.setUpdatedAt(LocalDateTime.now());
         ServiceEntity saved = serviceRepository.save(entity);
         syncStaffAssignments(saved.getId(), req.staffIds());
@@ -360,7 +366,8 @@ public class ServiceCatalogService {
             s.getName(), s.getDescription(), s.getDuration(), s.getPrice(), // maps entity.duration → dto.durationMinutes
             s.getServiceType(), s.getIsActive(), s.getIsVisible(),
             s.getColor(), s.getPriceType(), staffIds,
-            s.getMobileService(), s.getVirtualAppointment()
+            s.getMobileService(), s.getVirtualAppointment(),
+            s.getBookingInterval(), s.getPaddingBefore(), s.getPaddingAfter()
         );
     }
 }

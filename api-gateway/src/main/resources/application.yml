@@ -257,7 +257,7 @@ spring:
         - id: booking-service-public-availability
           uri: lb://booking-service
           predicates:
-            - Path=/api/public/studios/*/services/*/availability, /api/public/studios/*/staff/*/available-slots
+            - Path=/api/public/studios/*/services/*/availability, /api/public/studios/*/services/*/slots, /api/public/studios/*/staff/*/available-slots
           filters:
             - name: RequestRateLimiter
               args:
