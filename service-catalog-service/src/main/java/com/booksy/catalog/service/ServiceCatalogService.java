@@ -37,6 +37,16 @@ public class ServiceCatalogService {
             .stream().map(this::toDto).toList();
     }
 
+    /**
+     * Customer-facing service list: only services that are active AND visible.
+     * Services with "Allow self-booking" off (is_visible=false) are admin-only
+     * and must not appear in the customer app. The admin list above is unfiltered.
+     */
+    public List<ServiceDto> getPublicServicesByBusiness(Long businessId) {
+        return serviceRepository.findByBusinessIdAndIsActiveTrueAndIsVisibleTrue(businessId)
+            .stream().map(this::toDto).toList();
+    }
+
     public List<StaffRefDto> getStaffForService(Long serviceId) {
         return assignmentRepository.findByServiceId(serviceId)
             .stream()
@@ -61,7 +71,9 @@ public class ServiceCatalogService {
         entity.setColor(req.color());
         entity.setPriceType(req.priceType() != null ? req.priceType() : "FIXED");
         entity.setIsActive(true);
-        entity.setIsVisible(true);
+        entity.setIsVisible(req.isVisible() != null ? req.isVisible() : true);
+        entity.setMobileService(req.mobileService() != null ? req.mobileService() : false);
+        entity.setVirtualAppointment(req.virtualAppointment() != null ? req.virtualAppointment() : false);
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         ServiceEntity saved = serviceRepository.save(entity);
@@ -108,6 +120,9 @@ public class ServiceCatalogService {
         if (req.categoryId() != null) entity.setCategoryId(req.categoryId());
         if (req.color() != null) entity.setColor(req.color());
         if (req.priceType() != null) entity.setPriceType(req.priceType());
+        if (req.isVisible() != null) entity.setIsVisible(req.isVisible());
+        if (req.mobileService() != null) entity.setMobileService(req.mobileService());
+        if (req.virtualAppointment() != null) entity.setVirtualAppointment(req.virtualAppointment());
         entity.setUpdatedAt(LocalDateTime.now());
         ServiceEntity saved = serviceRepository.save(entity);
         syncStaffAssignments(saved.getId(), req.staffIds());
@@ -344,7 +359,8 @@ public class ServiceCatalogService {
             s.getId(), s.getBusinessId(), s.getCategoryId(), categoryName,
             s.getName(), s.getDescription(), s.getDuration(), s.getPrice(), // maps entity.duration → dto.durationMinutes
             s.getServiceType(), s.getIsActive(), s.getIsVisible(),
-            s.getColor(), s.getPriceType(), staffIds
+            s.getColor(), s.getPriceType(), staffIds,
+            s.getMobileService(), s.getVirtualAppointment()
         );
     }
 }

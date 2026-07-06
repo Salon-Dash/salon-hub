@@ -15,6 +15,8 @@ export interface Service {
   isActive: boolean;
   isVisible: boolean;
   staffIds?: number[];
+  mobileService?: boolean;
+  virtualAppointment?: boolean;
 }
 
 export interface CreateServiceRequest {
@@ -29,6 +31,9 @@ export interface CreateServiceRequest {
   comboServiceIds?: number[];
   timeBetweenMinutes?: number[];
   staffIds?: number[];
+  isVisible?: boolean;
+  mobileService?: boolean;
+  virtualAppointment?: boolean;
 }
 
 export interface UpdateServiceRequest {
@@ -45,6 +50,8 @@ export interface UpdateServiceRequest {
   comboServiceIds?: number[];
   timeBetweenMinutes?: number[];
   staffIds?: number[];
+  mobileService?: boolean;
+  virtualAppointment?: boolean;
 }
 
 export interface ComboServiceItem {

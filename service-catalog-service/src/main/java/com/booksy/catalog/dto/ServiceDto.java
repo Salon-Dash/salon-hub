@@ -17,5 +17,7 @@ public record ServiceDto(
     Boolean isVisible,
     String color,
     String priceType,
-    List<Long> staffIds
+    List<Long> staffIds,
+    Boolean mobileService,
+    Boolean virtualAppointment
 ) {}

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { ArrowLeft, Search, Plus, ChevronRight, GripVertical, Sparkles, FolderPlus, Package, Layers, Loader2, Box } from "lucide-react";
+import { ArrowLeft, Search, Plus, ChevronRight, GripVertical, Sparkles, FolderPlus, Package, Layers, Loader2, Box, EyeOff, MapPin, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import {
@@ -295,6 +295,30 @@ export default function ItemsCategoryPage() {
                             <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
                               <Layers size={12} className="mr-1" />
                               SERVICE
+                            </Badge>
+                          )}
+                          {/* Flag badges — make the SETTINGS toggles visible at a glance */}
+                          {!isAddon && item.isVisible === false && (
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-600 border-gray-200 text-xs" title="Hidden from the customer app">
+                              <EyeOff size={12} className="mr-1" />
+                              HIDDEN
+                            </Badge>
+                          )}
+                          {!isAddon && item.mobileService && (
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200 text-xs" title="Performed at the client's location">
+                              <MapPin size={12} className="mr-1" />
+                              MOBILE
+                            </Badge>
+                          )}
+                          {!isAddon && item.virtualAppointment && (
+                            <Badge variant="secondary" className="bg-teal-100 text-teal-700 border-teal-200 text-xs" title="Online / video appointment">
+                              <Video size={12} className="mr-1" />
+                              VIRTUAL
+                            </Badge>
+                          )}
+                          {!isAddon && !isCombo && item.serviceType && !["standard", "SERVICE"].includes(item.serviceType) && (
+                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-slate-200 text-xs">
+                              {item.serviceType.toUpperCase()}
                             </Badge>
                           )}
                         </div>

@@ -61,6 +61,14 @@ public class ServiceEntity {
     @Builder.Default
     private Boolean isVisible = true;
 
+    @Column(name = "mobile_service")
+    @Builder.Default
+    private Boolean mobileService = false;
+
+    @Column(name = "virtual_appointment")
+    @Builder.Default
+    private Boolean virtualAppointment = false;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

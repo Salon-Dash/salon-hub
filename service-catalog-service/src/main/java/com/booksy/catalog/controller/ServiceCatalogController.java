@@ -33,13 +33,13 @@ public class ServiceCatalogController {
     /** GET /api/public/studios/{studioId}/services — customer app public endpoint */
     @GetMapping("/api/public/studios/{studioId}/services")
     public List<ServiceDto> getPublicServicesForStudio(@PathVariable Long studioId) {
-        return catalogService.getServicesByBusiness(studioId);
+        return catalogService.getPublicServicesByBusiness(studioId);
     }
 
     /** GET /api/public/salons/{salonId}/services — customer app fallback path */
     @GetMapping("/api/public/salons/{salonId}/services")
     public List<ServiceDto> getPublicServicesForSalon(@PathVariable Long salonId) {
-        return catalogService.getServicesByBusiness(salonId);
+        return catalogService.getPublicServicesByBusiness(salonId);
     }
 
     @PostMapping("/api/services")
@@ -56,7 +56,8 @@ public class ServiceCatalogController {
         ServiceCreateRequest withBiz = request.businessId() != null ? request
                 : new ServiceCreateRequest(businessId, request.categoryId(), request.name(),
                         request.description(), request.durationMinutes(), request.price(), request.serviceType(),
-                        request.color(), request.priceType(), request.staffIds());
+                        request.color(), request.priceType(), request.staffIds(),
+                        request.isVisible(), request.mobileService(), request.virtualAppointment());
         return catalogService.createService(withBiz);
     }
 
@@ -74,7 +75,8 @@ public class ServiceCatalogController {
         ServiceCreateRequest withBiz = new ServiceCreateRequest(
                 businessId, request.categoryId(), request.name(),
                 request.description(), request.durationMinutes(), request.price(), request.serviceType(),
-                request.color(), request.priceType(), request.staffIds());
+                request.color(), request.priceType(), request.staffIds(),
+                request.isVisible(), request.mobileService(), request.virtualAppointment());
         return catalogService.updateService(id, withBiz);
     }
 

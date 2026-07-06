@@ -13,5 +13,8 @@ public record ServiceCreateRequest(
     String serviceType,
     String color,
     String priceType,
-    List<Long> staffIds
+    List<Long> staffIds,
+    Boolean isVisible,
+    Boolean mobileService,
+    Boolean virtualAppointment
 ) {}

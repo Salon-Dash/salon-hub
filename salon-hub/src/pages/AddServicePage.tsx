@@ -134,6 +134,13 @@ export default function AddServicePage() {
         } else {
           setSelectedStaff([]);
         }
+        // Re-populate the SETTINGS toggles from the stored flags
+        setSettingsData((prev) => ({
+          ...prev,
+          allowSelfBooking: service.isVisible ?? true,
+          mobileService: service.mobileService ?? false,
+          virtualAppointments: service.virtualAppointment ?? false,
+        }));
       }
     }
   }, [isEditMode, id, services]);
@@ -161,6 +168,9 @@ export default function AddServicePage() {
         color: formData.color || undefined,
         categoryId: formData.categoryId && formData.categoryId !== "none" ? parseInt(formData.categoryId) : undefined,
         staffIds: selectedStaff, // Always send staffIds array (even if empty) so backend can update relationships
+        isVisible: settingsData.allowSelfBooking, // "Allow self-booking" gates visibility in the customer app
+        mobileService: settingsData.mobileService,
+        virtualAppointment: settingsData.virtualAppointments,
       };
       
       if (isEditMode && id) {
@@ -202,6 +212,9 @@ export default function AddServicePage() {
         color: formData.color || undefined,
         categoryId: formData.categoryId && formData.categoryId !== "none" ? parseInt(formData.categoryId) : undefined,
         staffIds: selectedStaff, // Always send staffIds array (even if empty) so backend can update relationships
+        isVisible: settingsData.allowSelfBooking,
+        mobileService: settingsData.mobileService,
+        virtualAppointment: settingsData.virtualAppointments,
       });
       toast.success("Service created successfully");
       // Reset form for next service
