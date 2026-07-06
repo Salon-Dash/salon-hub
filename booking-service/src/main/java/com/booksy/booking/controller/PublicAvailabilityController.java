@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+// Public availability + real slot endpoints for the customer app.
 @RestController
 @RequestMapping("/api/public/studios/{studioId}/services/{serviceId}")
 @RequiredArgsConstructor

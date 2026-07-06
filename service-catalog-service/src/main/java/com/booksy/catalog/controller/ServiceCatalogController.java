@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+// Service catalog REST endpoints (services, categories, addons, quick-sale).
 @RestController
 @RequiredArgsConstructor
 public class ServiceCatalogController {
