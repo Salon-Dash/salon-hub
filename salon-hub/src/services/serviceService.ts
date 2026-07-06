@@ -20,6 +20,8 @@ export interface Service {
   bookingInterval?: number; // minutes between offered start times; 0 = step by duration
   paddingBefore?: number;   // buffer minutes reserved before the appointment
   paddingAfter?: number;    // buffer minutes reserved after the appointment
+  processingDuring?: number; // client-visit minutes after active work where staff is free
+  processingAfter?: number;  // additional client-visit minutes where staff is free
 }
 
 export interface CreateServiceRequest {
@@ -40,6 +42,8 @@ export interface CreateServiceRequest {
   bookingInterval?: number;
   paddingBefore?: number;
   paddingAfter?: number;
+  processingDuring?: number;
+  processingAfter?: number;
 }
 
 export interface UpdateServiceRequest {
@@ -61,6 +65,8 @@ export interface UpdateServiceRequest {
   bookingInterval?: number;
   paddingBefore?: number;
   paddingAfter?: number;
+  processingDuring?: number;
+  processingAfter?: number;
 }
 
 export interface ComboServiceItem {

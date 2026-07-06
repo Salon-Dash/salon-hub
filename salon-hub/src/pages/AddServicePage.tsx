@@ -146,6 +146,8 @@ export default function AddServicePage() {
         const bi = splitMinutes(service.bookingInterval);
         const pb = splitMinutes(service.paddingBefore);
         const pa = splitMinutes(service.paddingAfter);
+        const pd = splitMinutes(service.processingDuring);
+        const paf = splitMinutes(service.processingAfter);
         setSettingsData((prev) => ({
           ...prev,
           allowSelfBooking: service.isVisible ?? true,
@@ -157,6 +159,10 @@ export default function AddServicePage() {
           paddingTimeBeforeMinutes: pb.minutes,
           paddingTimeAfterHours: pa.hours,
           paddingTimeAfterMinutes: pa.minutes,
+          processingTimeDuringHours: pd.hours,
+          processingTimeDuringMinutes: pd.minutes,
+          processingTimeAfterHours: paf.hours,
+          processingTimeAfterMinutes: paf.minutes,
         }));
       }
     }
@@ -164,6 +170,26 @@ export default function AddServicePage() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Build the scheduling-engine fields (all total minutes) from the SETTINGS tab.
+  // The "Padding Time" Rule selector is honoured too: Fixed => that many minutes,
+  // Percentage => % of duration, applied as after-padding when the granular
+  // before/after fields are left at 0 (the explicit fields win when set).
+  const buildScheduling = () => {
+    const durMin = (parseInt(formData.durationHours) || 0) * 60 + (parseInt(formData.durationMinutes) || 0);
+    const granularAfter = toMinutes(settingsData.paddingTimeAfterHours, settingsData.paddingTimeAfterMinutes);
+    const ruleVal = settingsData.paddingTimeMinutes !== "Not set" ? parseInt(settingsData.paddingTimeMinutes) || 0 : 0;
+    let ruleAfter = 0;
+    if (settingsData.paddingTimeRule === "fixed") ruleAfter = ruleVal;
+    else if (settingsData.paddingTimeRule === "percentage") ruleAfter = Math.round((durMin * ruleVal) / 100);
+    return {
+      bookingInterval: toMinutes(settingsData.bookingIntervalHours, settingsData.bookingIntervalMinutes),
+      paddingBefore: toMinutes(settingsData.paddingTimeBeforeHours, settingsData.paddingTimeBeforeMinutes),
+      paddingAfter: granularAfter > 0 ? granularAfter : ruleAfter,
+      processingDuring: toMinutes(settingsData.processingTimeDuringHours, settingsData.processingTimeDuringMinutes),
+      processingAfter: toMinutes(settingsData.processingTimeAfterHours, settingsData.processingTimeAfterMinutes),
+    };
   };
 
   const handleSave = async () => {
@@ -188,10 +214,8 @@ export default function AddServicePage() {
         isVisible: settingsData.allowSelfBooking, // "Allow self-booking" gates visibility in the customer app
         mobileService: settingsData.mobileService,
         virtualAppointment: settingsData.virtualAppointments,
-        // Scheduling engine (Phase 2): all sent as total minutes.
-        bookingInterval: toMinutes(settingsData.bookingIntervalHours, settingsData.bookingIntervalMinutes),
-        paddingBefore: toMinutes(settingsData.paddingTimeBeforeHours, settingsData.paddingTimeBeforeMinutes),
-        paddingAfter: toMinutes(settingsData.paddingTimeAfterHours, settingsData.paddingTimeAfterMinutes),
+        // Scheduling engine (Phase 2): booking interval, padding, processing time.
+        ...buildScheduling(),
       };
 
       if (isEditMode && id) {
@@ -236,9 +260,7 @@ export default function AddServicePage() {
         isVisible: settingsData.allowSelfBooking,
         mobileService: settingsData.mobileService,
         virtualAppointment: settingsData.virtualAppointments,
-        bookingInterval: toMinutes(settingsData.bookingIntervalHours, settingsData.bookingIntervalMinutes),
-        paddingBefore: toMinutes(settingsData.paddingTimeBeforeHours, settingsData.paddingTimeBeforeMinutes),
-        paddingAfter: toMinutes(settingsData.paddingTimeAfterHours, settingsData.paddingTimeAfterMinutes),
+        ...buildScheduling(),
       });
       toast.success("Service created successfully");
       // Reset form for next service
