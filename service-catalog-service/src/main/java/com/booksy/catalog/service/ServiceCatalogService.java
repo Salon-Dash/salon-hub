@@ -58,11 +58,35 @@ public class ServiceCatalogService {
         entity.setDuration(req.durationMinutes() != null ? req.durationMinutes() : 60);
         entity.setPrice(req.price());
         entity.setServiceType(req.serviceType() != null ? req.serviceType() : "standard");
+        entity.setColor(req.color());
+        entity.setPriceType(req.priceType() != null ? req.priceType() : "FIXED");
         entity.setIsActive(true);
         entity.setIsVisible(true);
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
-        return toDto(serviceRepository.save(entity));
+        ServiceEntity saved = serviceRepository.save(entity);
+        syncStaffAssignments(saved.getId(), req.staffIds());
+        return toDto(saved);
+    }
+
+    /**
+     * Reconcile the service↔staff links to exactly match {@code staffIds}.
+     * A null list means "leave assignments untouched" (so callers that don't
+     * manage staff don't wipe them); an empty list clears all assignments.
+     */
+    private void syncStaffAssignments(Long serviceId, java.util.List<Long> staffIds) {
+        if (staffIds == null) return;
+        java.util.Set<Long> desired = new java.util.HashSet<>(staffIds);
+        java.util.Set<Long> current = new java.util.HashSet<>();
+        for (ServiceStaffAssignment a : assignmentRepository.findByServiceId(serviceId)) {
+            current.add(a.getStaffId());
+        }
+        for (Long staffId : desired) {
+            if (staffId != null && !current.contains(staffId)) assignStaffToService(serviceId, staffId);
+        }
+        for (Long staffId : current) {
+            if (!desired.contains(staffId)) removeStaffFromService(serviceId, staffId);
+        }
     }
 
     @Transactional
@@ -82,8 +106,12 @@ public class ServiceCatalogService {
         }
         if (req.price() != null) entity.setPrice(req.price());
         if (req.categoryId() != null) entity.setCategoryId(req.categoryId());
+        if (req.color() != null) entity.setColor(req.color());
+        if (req.priceType() != null) entity.setPriceType(req.priceType());
         entity.setUpdatedAt(LocalDateTime.now());
-        return toDto(serviceRepository.save(entity));
+        ServiceEntity saved = serviceRepository.save(entity);
+        syncStaffAssignments(saved.getId(), req.staffIds());
+        return toDto(saved);
     }
 
     @Transactional
@@ -310,10 +338,13 @@ public class ServiceCatalogService {
         String categoryName = s.getCategoryId() != null
             ? categoryRepository.findById(s.getCategoryId()).map(Category::getName).orElse(null)
             : null;
+        java.util.List<Long> staffIds = assignmentRepository.findByServiceId(s.getId())
+            .stream().map(ServiceStaffAssignment::getStaffId).toList();
         return new ServiceDto(
             s.getId(), s.getBusinessId(), s.getCategoryId(), categoryName,
             s.getName(), s.getDescription(), s.getDuration(), s.getPrice(), // maps entity.duration → dto.durationMinutes
-            s.getServiceType(), s.getIsActive(), s.getIsVisible()
+            s.getServiceType(), s.getIsActive(), s.getIsVisible(),
+            s.getColor(), s.getPriceType(), staffIds
         );
     }
 }

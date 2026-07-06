@@ -55,7 +55,8 @@ public class ServiceCatalogController {
                                                 @RequestBody ServiceCreateRequest request) {
         ServiceCreateRequest withBiz = request.businessId() != null ? request
                 : new ServiceCreateRequest(businessId, request.categoryId(), request.name(),
-                        request.description(), request.durationMinutes(), request.price(), request.serviceType());
+                        request.description(), request.durationMinutes(), request.price(), request.serviceType(),
+                        request.color(), request.priceType(), request.staffIds());
         return catalogService.createService(withBiz);
     }
 
@@ -72,7 +73,8 @@ public class ServiceCatalogController {
         // Merge path businessId into request so the service layer can validate ownership
         ServiceCreateRequest withBiz = new ServiceCreateRequest(
                 businessId, request.categoryId(), request.name(),
-                request.description(), request.durationMinutes(), request.price(), request.serviceType());
+                request.description(), request.durationMinutes(), request.price(), request.serviceType(),
+                request.color(), request.priceType(), request.staffIds());
         return catalogService.updateService(id, withBiz);
     }
 

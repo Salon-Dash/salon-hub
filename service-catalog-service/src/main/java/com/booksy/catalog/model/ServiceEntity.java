@@ -46,6 +46,13 @@ public class ServiceEntity {
     @Builder.Default
     private String serviceType = "standard";
 
+    @Column(name = "color")
+    private String color;
+
+    @Column(name = "price_type")
+    @Builder.Default
+    private String priceType = "FIXED";
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

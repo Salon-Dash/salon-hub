@@ -1,6 +1,7 @@
 package com.booksy.catalog.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record ServiceDto(
     Long id,
@@ -13,5 +14,8 @@ public record ServiceDto(
     BigDecimal price,
     String serviceType,
     Boolean isActive,
-    Boolean isVisible
+    Boolean isVisible,
+    String color,
+    String priceType,
+    List<Long> staffIds
 ) {}

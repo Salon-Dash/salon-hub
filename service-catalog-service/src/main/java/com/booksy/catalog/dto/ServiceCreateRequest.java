@@ -1,6 +1,7 @@
 package com.booksy.catalog.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record ServiceCreateRequest(
     Long businessId,
@@ -9,5 +10,8 @@ public record ServiceCreateRequest(
     String description,
     Integer durationMinutes,
     BigDecimal price,
-    String serviceType
+    String serviceType,
+    String color,
+    String priceType,
+    List<Long> staffIds
 ) {}
