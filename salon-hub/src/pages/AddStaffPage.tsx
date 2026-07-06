@@ -26,6 +26,12 @@ import { useStaff } from "@/hooks/useStaff";
 import { useServices } from "@/hooks/useServices";
 import { useNavigation } from "@/utils/navigationUtils";
 import { toast } from "sonner";
+import {
+  WorkingHoursEditor,
+  DEFAULT_WEEK,
+  scheduleToPayload,
+  type WeekSchedule,
+} from "@/components/staff/WorkingHoursEditor";
 
 export default function AddStaffPage() {
   const navigate = useNavigate();
@@ -33,6 +39,7 @@ export default function AddStaffPage() {
   const { createStaff, loading: creating } = useStaff();
   const { services, loading: servicesLoading } = useServices();
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
+  const [schedule, setSchedule] = useState<WeekSchedule>(DEFAULT_WEEK);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -77,6 +84,7 @@ export default function AddStaffPage() {
         position: formData.position || undefined,
         serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
         inviteAndCreateAccount: formData.inviteAndCreateAccount,
+        schedule: scheduleToPayload(schedule),
       });
       navigate(getPath("staff"));
     } catch (error: any) {
@@ -346,6 +354,15 @@ export default function AddStaffPage() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Working Hours */}
+            <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Working hours</h3>
+              <p className="text-xs text-gray-600 mb-4">
+                Clients can only book this staff member during these hours. Turn a day off to mark it closed.
+              </p>
+              <WorkingHoursEditor value={schedule} onChange={setSchedule} />
             </div>
           </div>
         </div>

@@ -11,6 +11,9 @@ export interface Staff {
   initials?: string;
   workingHours?: string;
   workingHoursDetail?: Record<string, { start: string | null; end: string | null; isClosed: boolean }>;
+  // Per-day working hours from the backend (keys "MONDAY"…, values "HH:mm[:ss]").
+  workingHoursStart?: Record<string, string>;
+  workingHoursEnd?: Record<string, string>;
   canBookAppointments?: boolean;
   canManageCalendar?: boolean;
   canViewReports?: boolean;
@@ -26,6 +29,8 @@ export interface CreateStaffRequest {
   position?: string;
   serviceIds?: number[];
   inviteAndCreateAccount?: boolean;
+  // staff-service schedule: { MONDAY: ["09:00","17:00"], … } — enabled days only.
+  schedule?: Record<string, string[]>;
 }
 
 export interface UpdateStaffRequest {
@@ -35,7 +40,8 @@ export interface UpdateStaffRequest {
   position?: string;
   serviceIds?: number[];
   isActive?: boolean;
-  workingHours?: Record<string, { start: string; end: string; isClosed: boolean }>;
+  // staff-service schedule: { MONDAY: ["09:00","17:00"], … }. Update replaces all days.
+  schedule?: Record<string, string[]>;
 }
 
 export const staffService = {

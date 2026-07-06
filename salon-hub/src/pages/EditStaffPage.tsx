@@ -28,6 +28,13 @@ import { useServices } from "@/hooks/useServices";
 import { staffService } from "@/services/staffService";
 import { useBusinessId } from "@/hooks/useBusinessId";
 import { useNavigation } from "@/utils/navigationUtils";
+import {
+  WorkingHoursEditor,
+  DEFAULT_WEEK,
+  scheduleToPayload,
+  weekFromWorkingHours,
+  type WeekSchedule,
+} from "@/components/staff/WorkingHoursEditor";
 
 export default function EditStaffPage() {
   const navigate = useNavigate();
@@ -37,6 +44,7 @@ export default function EditStaffPage() {
   const { updateStaff, loading: updating } = useStaff(businessId);
   const { services, loading: servicesLoading } = useServices(businessId);
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
+  const [schedule, setSchedule] = useState<WeekSchedule>(DEFAULT_WEEK);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
@@ -67,6 +75,7 @@ export default function EditStaffPage() {
           description: "",
         });
         setSelectedServiceIds(staff.serviceIds || []);
+        setSchedule(weekFromWorkingHours(staff.workingHoursStart, staff.workingHoursEnd));
       } catch (error) {
         console.error("Failed to load staff:", error);
       } finally {
@@ -98,6 +107,7 @@ export default function EditStaffPage() {
         position: formData.position || undefined,
         serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
         isActive: formData.showInCalendar,
+        schedule: scheduleToPayload(schedule),
       });
       navigate(getPath("staff"));
     } catch (error) {
@@ -408,6 +418,15 @@ export default function EditStaffPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Working Hours */}
+            <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Working hours</h3>
+              <p className="text-xs text-gray-600 mb-4">
+                Clients can only book this staff member during these hours. Turn a day off to mark it closed.
+              </p>
+              <WorkingHoursEditor value={schedule} onChange={setSchedule} />
             </div>
           </div>
         </div>
