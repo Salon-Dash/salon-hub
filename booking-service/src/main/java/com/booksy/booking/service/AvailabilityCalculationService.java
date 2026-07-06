@@ -85,6 +85,7 @@ public class AvailabilityCalculationService {
     }
 
     private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
+    private static final int[] ZERO_PAD = {0, 0};
 
     /**
      * Phase 2 slot engine: compute the actual bookable start times for a service on
@@ -137,10 +138,29 @@ public class AvailabilityCalculationService {
                     // so another booking may start during this appointment's processing tail.
                     int visitTotal = duration + Math.max(0, info.getProcessingDuring()) + Math.max(0, info.getProcessingAfter());
 
+                    // Each existing appointment reserves buffer per ITS OWN service's padding,
+                    // not the candidate's. Resolve {before,after} once per distinct service.
+                    Map<Integer, int[]> padByService = new HashMap<>();
+                    padByService.put(serviceId, new int[]{padBefore, padAfter}); // candidate already known
+                    for (Appointment a : appointments) {
+                        if (a.getStatus() != null && !"CANCELLED".equalsIgnoreCase(a.getStatus())) {
+                            padByService.computeIfAbsent(a.getServiceId(), sid -> {
+                                try {
+                                    ServiceCatalogClient.ServiceInfo si = serviceCatalogClient.getServiceInfo(sid)
+                                        .block(java.time.Duration.ofSeconds(5));
+                                    return si == null ? ZERO_PAD
+                                        : new int[]{Math.max(0, si.getPaddingBefore()), Math.max(0, si.getPaddingAfter())};
+                                } catch (Exception e) {
+                                    return ZERO_PAD;
+                                }
+                            });
+                        }
+                    }
+
                     TreeSet<LocalTime> slots = new TreeSet<>();
                     for (AvailableMaster staff : staffList) {
                         addStaffSlots(slots, staff, date, businessHours, timeOffs, appointments,
-                                      duration, visitTotal, interval, padBefore, padAfter);
+                                      duration, visitTotal, interval, padBefore, padAfter, padByService);
                     }
                     List<String> formatted = slots.stream().map(HHMM::format).collect(Collectors.toList());
                     log.debug("Slots for service {} on {} (staff {}): {} slots", serviceId, date, staffId, formatted.size());
@@ -161,7 +181,8 @@ public class AvailabilityCalculationService {
      */
     private void addStaffSlots(TreeSet<LocalTime> out, AvailableMaster staff, LocalDate date,
             BusinessHoursResponse businessHours, List<TimeOffResponse> timeOffs,
-            List<Appointment> appointments, int duration, int visitTotal, int interval, int padBefore, int padAfter) {
+            List<Appointment> appointments, int duration, int visitTotal, int interval, int padBefore, int padAfter,
+            Map<Integer, int[]> padByService) {
 
         StaffResponse sd = getStaffDetailsSync(staff.getId());
         if (sd == null) return;
@@ -194,11 +215,15 @@ public class AvailabilityCalculationService {
             if (isToday && t.isBefore(now)) continue;
             // …but the staff is only occupied for the active `duration` (+ padding),
             // so conflicts/padding are checked against that shorter busy window.
-            LocalTime blockStart = minusClamped(t, padBefore);
-            LocalTime blockEnd = plusClamped(t.plusMinutes(duration), padAfter);
+            LocalTime candStart = minusClamped(t, padBefore);
+            LocalTime candEnd = plusClamped(t.plusMinutes(duration), padAfter);
             boolean conflict = false;
             for (Appointment a : busy) {
-                if (blockStart.isBefore(a.getEndTime()) && a.getStartTime().isBefore(blockEnd)) {
+                // Expand each existing appointment by ITS OWN service's padding.
+                int[] ep = padByService.getOrDefault(a.getServiceId(), ZERO_PAD);
+                LocalTime existStart = minusClamped(a.getStartTime(), ep[0]);
+                LocalTime existEnd = plusClamped(a.getEndTime(), ep[1]);
+                if (candStart.isBefore(existEnd) && existStart.isBefore(candEnd)) {
                     conflict = true;
                     break;
                 }
