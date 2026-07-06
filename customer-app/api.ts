@@ -119,6 +119,10 @@ export type PublicService = {
   priceType?: 'FIXED' | 'FROM' | 'RANGE' | string | null;
   mobileService?: boolean | null;
   virtualAppointment?: boolean | null;
+  // Processing time (minutes): extra client-visit time after the active work
+  // where the staff is free. durationMinutes = active/staff-busy time.
+  processingDuring?: number | null;
+  processingAfter?: number | null;
 };
 
 export type PublicStaff = {

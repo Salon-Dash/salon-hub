@@ -286,7 +286,15 @@ export function CustomerBookingScreen({
       const [hours, minutes] = selectedTime.split(':').map(Number);
       const startAt = new Date(selectedDate);
       startAt.setHours(hours, minutes, 0, 0);
+      // Booked end_time = start + active duration so the staff is freed during
+      // processing; the client-facing durationLine shows the full visit.
       const endAt = new Date(startAt.getTime() + selectedService.durationMinutes * 60 * 1000);
+      const processingTotalMin =
+        (selectedService.processingDuring ?? 0) + (selectedService.processingAfter ?? 0);
+      const durationLine =
+        processingTotalMin > 0
+          ? `${selectedService.durationMinutes + processingTotalMin} min total · ${selectedService.durationMinutes} min service + ${processingTotalMin} min processing`
+          : `${selectedService.durationMinutes} min duration`;
       const created = await api.createBooking(token, {
         companyId: salonId,
         serviceId: selectedService.id,
@@ -302,7 +310,7 @@ export function CustomerBookingScreen({
         businessName: created.companyName,
         heroImage: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1000&q=80',
         timeHeadline: new Date(created.startAt).toLocaleString(),
-        durationLine: `${selectedService.durationMinutes} min duration`,
+        durationLine,
         activitySubtitle: `${selectedService.name} • ${totalPrice} zł`,
         totalCzk: totalPrice,
         serviceName: selectedService.name,
@@ -609,8 +617,14 @@ export function CustomerBookingScreen({
       const reviewStartAt = new Date(selectedDate);
       const [reviewHours, reviewMinutes] = selectedTime.split(':').map((value) => Number(value));
       reviewStartAt.setHours(reviewHours || 0, reviewMinutes || 0, 0, 0);
+      const reviewActiveMin = selectedService?.durationMinutes ?? 60;
+      // The client stays for the full visit: active work + processing time. The
+      // booked end_time stays = active (so the staff is freed), but the client-facing
+      // finish time reflects the whole visit.
+      const reviewProcessingMin =
+        (selectedService?.processingDuring ?? 0) + (selectedService?.processingAfter ?? 0);
       const reviewEndAt = new Date(reviewStartAt);
-      reviewEndAt.setMinutes(reviewEndAt.getMinutes() + (selectedService?.durationMinutes ?? 60));
+      reviewEndAt.setMinutes(reviewEndAt.getMinutes() + reviewActiveMin + reviewProcessingMin);
       return (
         <>
           {!valid ? (
@@ -662,9 +676,17 @@ export function CustomerBookingScreen({
                 <Ionicons name="time-outline" size={18} color={colors.text} />
                 <Text style={[styles.reviewInfoText, { fontFamily: fonts.regular }]}>
                   {selectedTime}-{reviewEndAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}{' '}
-                  ({humanDuration(selectedService?.durationMinutes ?? 0)} duration)
+                  ({humanDuration(reviewActiveMin + reviewProcessingMin)} total)
                 </Text>
               </View>
+              {reviewProcessingMin > 0 ? (
+                <View style={styles.reviewInfoRow}>
+                  <Ionicons name="hourglass-outline" size={18} color={colors.text} />
+                  <Text style={[styles.reviewInfoText, { fontFamily: fonts.regular }]}>
+                    {humanDuration(reviewActiveMin)} service + {humanDuration(reviewProcessingMin)} processing
+                  </Text>
+                </View>
+              ) : null}
               <View style={styles.reviewDivider} />
               <View style={styles.reviewServiceRow}>
                 <View style={styles.reviewServiceTextWrap}>
