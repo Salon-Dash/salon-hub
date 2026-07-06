@@ -81,6 +81,14 @@ public class ServiceEntity {
     @Builder.Default
     private Integer paddingAfter = 0;
 
+    @Column(name = "processing_during")
+    @Builder.Default
+    private Integer processingDuring = 0;
+
+    @Column(name = "processing_after")
+    @Builder.Default
+    private Integer processingAfter = 0;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

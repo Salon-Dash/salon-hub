@@ -22,5 +22,7 @@ public record ServiceDto(
     Boolean virtualAppointment,
     Integer bookingInterval,
     Integer paddingBefore,
-    Integer paddingAfter
+    Integer paddingAfter,
+    Integer processingDuring,
+    Integer processingAfter
 ) {}

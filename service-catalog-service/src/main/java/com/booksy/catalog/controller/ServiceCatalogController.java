@@ -58,7 +58,8 @@ public class ServiceCatalogController {
                         request.description(), request.durationMinutes(), request.price(), request.serviceType(),
                         request.color(), request.priceType(), request.staffIds(),
                         request.isVisible(), request.mobileService(), request.virtualAppointment(),
-                        request.bookingInterval(), request.paddingBefore(), request.paddingAfter());
+                        request.bookingInterval(), request.paddingBefore(), request.paddingAfter(),
+                        request.processingDuring(), request.processingAfter());
         return catalogService.createService(withBiz);
     }
 
@@ -78,7 +79,8 @@ public class ServiceCatalogController {
                 request.description(), request.durationMinutes(), request.price(), request.serviceType(),
                 request.color(), request.priceType(), request.staffIds(),
                 request.isVisible(), request.mobileService(), request.virtualAppointment(),
-                request.bookingInterval(), request.paddingBefore(), request.paddingAfter());
+                request.bookingInterval(), request.paddingBefore(), request.paddingAfter(),
+                request.processingDuring(), request.processingAfter());
         return catalogService.updateService(id, withBiz);
     }
 

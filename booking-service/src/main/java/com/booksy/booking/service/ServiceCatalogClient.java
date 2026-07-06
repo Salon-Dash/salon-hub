@@ -68,6 +68,8 @@ public class ServiceCatalogClient {
         private int bookingInterval; // minutes between offered start times; 0 = step by duration
         private int paddingBefore;   // buffer minutes reserved before the appointment
         private int paddingAfter;    // buffer minutes reserved after the appointment
+        private int processingDuring; // client-visit minutes after active work where staff is FREE
+        private int processingAfter;  // additional client-visit minutes where staff is FREE
 
         // getters and setters
         public int getId() { return id; }
@@ -82,5 +84,9 @@ public class ServiceCatalogClient {
         public void setPaddingBefore(int paddingBefore) { this.paddingBefore = paddingBefore; }
         public int getPaddingAfter() { return paddingAfter; }
         public void setPaddingAfter(int paddingAfter) { this.paddingAfter = paddingAfter; }
+        public int getProcessingDuring() { return processingDuring; }
+        public void setProcessingDuring(int processingDuring) { this.processingDuring = processingDuring; }
+        public int getProcessingAfter() { return processingAfter; }
+        public void setProcessingAfter(int processingAfter) { this.processingAfter = processingAfter; }
     }
 }

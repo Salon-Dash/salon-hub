@@ -77,6 +77,8 @@ public class ServiceCatalogService {
         entity.setBookingInterval(req.bookingInterval() != null ? req.bookingInterval() : 0);
         entity.setPaddingBefore(req.paddingBefore() != null ? req.paddingBefore() : 0);
         entity.setPaddingAfter(req.paddingAfter() != null ? req.paddingAfter() : 0);
+        entity.setProcessingDuring(req.processingDuring() != null ? req.processingDuring() : 0);
+        entity.setProcessingAfter(req.processingAfter() != null ? req.processingAfter() : 0);
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         ServiceEntity saved = serviceRepository.save(entity);
@@ -129,6 +131,8 @@ public class ServiceCatalogService {
         if (req.bookingInterval() != null) entity.setBookingInterval(req.bookingInterval());
         if (req.paddingBefore() != null) entity.setPaddingBefore(req.paddingBefore());
         if (req.paddingAfter() != null) entity.setPaddingAfter(req.paddingAfter());
+        if (req.processingDuring() != null) entity.setProcessingDuring(req.processingDuring());
+        if (req.processingAfter() != null) entity.setProcessingAfter(req.processingAfter());
         entity.setUpdatedAt(LocalDateTime.now());
         ServiceEntity saved = serviceRepository.save(entity);
         syncStaffAssignments(saved.getId(), req.staffIds());
@@ -367,7 +371,8 @@ public class ServiceCatalogService {
             s.getServiceType(), s.getIsActive(), s.getIsVisible(),
             s.getColor(), s.getPriceType(), staffIds,
             s.getMobileService(), s.getVirtualAppointment(),
-            s.getBookingInterval(), s.getPaddingBefore(), s.getPaddingAfter()
+            s.getBookingInterval(), s.getPaddingBefore(), s.getPaddingAfter(),
+            s.getProcessingDuring(), s.getProcessingAfter()
         );
     }
 }

@@ -131,11 +131,16 @@ public class AvailabilityCalculationService {
                     int interval = info.getBookingInterval() > 0 ? info.getBookingInterval() : duration;
                     int padBefore = Math.max(0, info.getPaddingBefore());
                     int padAfter = Math.max(0, info.getPaddingAfter());
+                    // Processing time: extra client-visit minutes AFTER the active work where
+                    // the staff is free. The full visit must fit within opening hours, but the
+                    // staff-busy interval (used for conflicts/padding) stays = active duration,
+                    // so another booking may start during this appointment's processing tail.
+                    int visitTotal = duration + Math.max(0, info.getProcessingDuring()) + Math.max(0, info.getProcessingAfter());
 
                     TreeSet<LocalTime> slots = new TreeSet<>();
                     for (AvailableMaster staff : staffList) {
                         addStaffSlots(slots, staff, date, businessHours, timeOffs, appointments,
-                                      duration, interval, padBefore, padAfter);
+                                      duration, visitTotal, interval, padBefore, padAfter);
                     }
                     List<String> formatted = slots.stream().map(HHMM::format).collect(Collectors.toList());
                     log.debug("Slots for service {} on {} (staff {}): {} slots", serviceId, date, staffId, formatted.size());
@@ -156,7 +161,7 @@ public class AvailabilityCalculationService {
      */
     private void addStaffSlots(TreeSet<LocalTime> out, AvailableMaster staff, LocalDate date,
             BusinessHoursResponse businessHours, List<TimeOffResponse> timeOffs,
-            List<Appointment> appointments, int duration, int interval, int padBefore, int padAfter) {
+            List<Appointment> appointments, int duration, int visitTotal, int interval, int padBefore, int padAfter) {
 
         StaffResponse sd = getStaffDetailsSync(staff.getId());
         if (sd == null) return;
@@ -184,8 +189,11 @@ public class AvailabilityCalculationService {
         LocalTime now = LocalTime.now();
         int step = interval > 0 ? interval : (duration > 0 ? duration : 60);
 
-        for (LocalTime t = effStart; !t.plusMinutes(duration).isAfter(effEnd); t = t.plusMinutes(step)) {
+        // Full client visit (active + processing) must fit inside opening hours…
+        for (LocalTime t = effStart; !t.plusMinutes(visitTotal).isAfter(effEnd); t = t.plusMinutes(step)) {
             if (isToday && t.isBefore(now)) continue;
+            // …but the staff is only occupied for the active `duration` (+ padding),
+            // so conflicts/padding are checked against that shorter busy window.
             LocalTime blockStart = minusClamped(t, padBefore);
             LocalTime blockEnd = plusClamped(t.plusMinutes(duration), padAfter);
             boolean conflict = false;
