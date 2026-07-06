@@ -191,6 +191,13 @@ export type AvailabilityResponse = {
   occupiedSlotsUtc: string[];
 };
 
+export type DailySlotsResponse = {
+  serviceId: number;
+  date: string;
+  durationMinutes: number;
+  availableSlots: string[]; // real bookable start times, "HH:mm"
+};
+
 export type BusinessHoursItem = {
   id: number;
   businessId: number;
@@ -418,6 +425,13 @@ export const api = {
         ];
     return requestWithFallback<AvailabilityResponse>(paths, 'GET')
       .catch(() => ({ occupiedSlotsUtc: [] as string[] }));
+  },
+  // Phase 2: real bookable start times for a service on a date (optionally one staff).
+  salonSlots: (companyId: number, serviceId: number, date: string, staffId?: number) => {
+    const path = `/api/public/studios/${companyId}/services/${serviceId}/slots?date=${encodeURIComponent(date)}${staffId ? `&staffId=${staffId}` : ''}`;
+    return requestWithFallback<DailySlotsResponse>([path], 'GET')
+      .then((r) => (Array.isArray(r?.availableSlots) ? r.availableSlots : []))
+      .catch(() => [] as string[]);
   },
   businessHours: (companyId: number) =>
     requestWithFallback<BusinessHoursItem[]>(

@@ -80,7 +80,9 @@ export function CustomerBookingScreen({
     return d;
   });
   const [selectedTime, setSelectedTime] = useState('10:00');
-  const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
+  // Real bookable start times for the chosen service+date+staff (from the backend
+  // slot engine). Every entry is confirmed free — no client-side occupancy guessing.
+  const [timeOptions, setTimeOptions] = useState<string[]>([]);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const calendarSheetRef = useRef<BottomSheet>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => {
@@ -124,7 +126,7 @@ export function CustomerBookingScreen({
     setStep(isSingleServiceFlow ? 'pickStaff' : 'services');
     setWantPickStaff(false);
     setHasChosenStaff(true);
-    setOccupiedSlots([]);
+    setTimeOptions([]);
     const d = new Date();
     d.setDate(d.getDate() + 1);
     d.setHours(0, 0, 0, 0);
@@ -215,27 +217,34 @@ export function CustomerBookingScreen({
     });
   }, [calendarMonth]);
 
-  const timeOptions = ['09:00', '10:00', '11:00', '13:00', '15:00', '17:00'];
-
   useEffect(() => {
+    if (!selectedServiceId) {
+      setTimeOptions([]);
+      return;
+    }
     const day = selectedDate.toISOString().slice(0, 10);
+    const staffId = wantPickStaff ? selectedStaffId ?? undefined : undefined;
+    let cancelled = false;
     api
-      .salonAvailability(salonId, day, wantPickStaff ? selectedStaffId ?? undefined : undefined)
-      .then((res) => {
-        const normalized = res.occupiedSlotsUtc
-          .map((slot) => slot.slice(0, 5))
-          .filter((slot) => timeOptions.includes(slot));
-        setOccupiedSlots(normalized);
-        if (normalized.includes(selectedTime)) {
-          const firstAvailable = timeOptions.find((slot) => !normalized.includes(slot));
-          if (firstAvailable) setSelectedTime(firstAvailable);
+      .salonSlots(salonId, selectedServiceId, day, staffId)
+      .then((slots) => {
+        if (cancelled) return;
+        setTimeOptions(slots);
+        // Keep the chosen time valid: if it's no longer offered, jump to the first free slot.
+        if (slots.length > 0 && !slots.includes(selectedTime)) {
+          setSelectedTime(slots[0]);
         }
       })
-      .catch(() => setOccupiedSlots([]));
-  }, [salonId, selectedDate, selectedStaffId, selectedTime, wantPickStaff]);
+      .catch(() => {
+        if (!cancelled) setTimeOptions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [salonId, selectedServiceId, selectedDate, selectedStaffId, selectedTime, wantPickStaff]);
 
-  const slotHasConflict = occupiedSlots.includes(selectedTime);
-  const availableTimeOptions = timeOptions.filter((slot) => !occupiedSlots.includes(slot));
+  const slotHasConflict = timeOptions.length > 0 && !timeOptions.includes(selectedTime);
+  const availableTimeOptions = timeOptions;
   const isFullyBooked = availableTimeOptions.length === 0;
   const effectiveStaffIdForBooking = wantPickStaff ? selectedStaffId ?? undefined : undefined;
 
@@ -494,15 +503,13 @@ export function CustomerBookingScreen({
             <View style={styles.timeListWrap}>
               {timeOptions.map((time) => {
                 const isActive = time === selectedTime;
-                const isOccupied = occupiedSlots.includes(time);
                 return (
                   <Pressable
                     key={time}
-                    disabled={isOccupied}
                     onPress={() => setSelectedTime(time)}
-                    style={[styles.timeListItem, isActive && styles.timeListItemOn, isOccupied && styles.timeListItemBusy]}
+                    style={[styles.timeListItem, isActive && styles.timeListItemOn]}
                   >
-                    <Text style={[styles.timeListItemText, { fontFamily: fonts.semibold }, isOccupied && styles.slotTextDisabled]}>
+                    <Text style={[styles.timeListItemText, { fontFamily: fonts.semibold }]}>
                       {time}
                     </Text>
                   </Pressable>
