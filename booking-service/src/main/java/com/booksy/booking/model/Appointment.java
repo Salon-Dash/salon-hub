@@ -32,7 +32,7 @@ public class Appointment {
     private int staffId;
 
     @Column(name = "client_id")
-    private int clientId;
+    private Integer clientId;
 
     @Column(name = "service_id")
     private int serviceId;
@@ -69,7 +69,7 @@ public class Appointment {
 
     private BigDecimal price;
 
-    public Appointment(Long id, int businessId, int staffId, int clientId, int serviceId, LocalDate appointmentDate, LocalTime startTime, LocalTime endTime, String status) {
+    public Appointment(Long id, int businessId, int staffId, Integer clientId, int serviceId, LocalDate appointmentDate, LocalTime startTime, LocalTime endTime, String status) {
         this.id = id;
         this.businessId = businessId;
         this.staffId = staffId;
@@ -85,7 +85,7 @@ public class Appointment {
     public void setId(Long id) { this.id = id; }
     public void setBusinessId(int businessId) { this.businessId = businessId; }
     public void setStaffId(int staffId) { this.staffId = staffId; }
-    public void setClientId(int clientId) { this.clientId = clientId; }
+    public void setClientId(Integer clientId) { this.clientId = clientId; }
     public void setServiceId(int serviceId) { this.serviceId = serviceId; }
     public void setAppointmentDate(LocalDate appointmentDate) { this.appointmentDate = appointmentDate; }
     public void setStartTime(LocalTime startTime) { this.startTime = startTime; }
@@ -105,7 +105,7 @@ public class Appointment {
     public int getStaffId() {
         return staffId;
     }
-    public int getClientId() { return clientId; }
+    public Integer getClientId() { return clientId; }
     public int getServiceId() { return serviceId; }
 
     public LocalDate getAppointmentDate() {
