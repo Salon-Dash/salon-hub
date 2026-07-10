@@ -136,4 +136,33 @@ public class CustomerBookingController {
         resp.put("status",          saved.getStatus());
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
+
+    /**
+     * POST /api/customer/bookings/{id}/cancel
+     * Cancel a booking that belongs to the authenticated customer. Ownership is
+     * enforced by matching the appointment's clientEmail to the JWT subject, so a
+     * customer can never cancel someone else's booking.
+     */
+    @PostMapping("/bookings/{id}/cancel")
+    public ResponseEntity<Map<String, Object>> cancelMyBooking(
+            Authentication auth,
+            @PathVariable Long id) {
+        if (auth == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String email = auth.getName();
+
+        Appointment appt = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+        if (appt.getClientEmail() == null || !appt.getClientEmail().equalsIgnoreCase(email)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This booking does not belong to you");
+        }
+
+        appt.setStatus("CANCELLED");
+        Appointment saved = appointmentRepository.save(appt);
+        log.info("Customer booking id={} cancelled by {}", saved.getId(), email);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("id",     saved.getId());
+        resp.put("status", saved.getStatus());
+        return ResponseEntity.ok(resp);
+    }
 }
