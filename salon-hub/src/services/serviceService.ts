@@ -114,6 +114,20 @@ export const serviceService = {
   async getComboServiceItems(serviceId: number): Promise<ComboServiceItem[]> {
     return apiClient.get<ComboServiceItem[]>(`/services/${serviceId}/combo-items`);
   },
+
+  // Service↔staff assignments viewed from the staff side. Assignments are owned by
+  // service-catalog; these let the staff form load and save which services a staff
+  // member can perform (the counterpart of the staffIds field on the service form).
+  async getStaffServiceIds(businessId: number, staffId: number): Promise<number[]> {
+    return apiClient.get<number[]>(`/services/assignments/business/${businessId}/staff/${staffId}`);
+  },
+
+  async setStaffServiceIds(businessId: number, staffId: number, serviceIds: number[]): Promise<number[]> {
+    return apiClient.put<number[]>(
+      `/services/assignments/business/${businessId}/staff/${staffId}`,
+      { serviceIds }
+    );
+  },
 };
 
 

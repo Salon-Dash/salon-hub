@@ -26,6 +26,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useStaff } from "@/hooks/useStaff";
 import { useServices } from "@/hooks/useServices";
 import { staffService } from "@/services/staffService";
+import { serviceService } from "@/services/serviceService";
 import { useBusinessId } from "@/hooks/useBusinessId";
 import { useNavigation } from "@/utils/navigationUtils";
 import {
@@ -74,8 +75,16 @@ export default function EditStaffPage() {
           availableForOnlineBooking: staff.canBookAppointments || false,
           description: "",
         });
-        setSelectedServiceIds(staff.serviceIds || []);
         setSchedule(weekFromWorkingHours(staff.workingHoursStart, staff.workingHoursEnd));
+        // Which services this staff can perform lives in service-catalog, not on the
+        // staff record — load it from the assignments endpoint.
+        try {
+          const svcIds = await serviceService.getStaffServiceIds(businessId, Number(id));
+          setSelectedServiceIds(svcIds || []);
+        } catch (e) {
+          console.error("Failed to load staff service assignments:", e);
+          setSelectedServiceIds([]);
+        }
       } catch (error) {
         console.error("Failed to load staff:", error);
       } finally {
@@ -105,10 +114,11 @@ export default function EditStaffPage() {
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         position: formData.position || undefined,
-        serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
         isActive: formData.showInCalendar,
         schedule: scheduleToPayload(schedule),
       });
+      // Persist the staff↔service assignments (owned by service-catalog).
+      await serviceService.setStaffServiceIds(businessId, Number(id), selectedServiceIds);
       navigate(getPath("staff"));
     } catch (error) {
       console.error("Failed to update staff:", error);

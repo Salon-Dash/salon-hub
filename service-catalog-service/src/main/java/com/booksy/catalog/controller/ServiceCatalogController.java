@@ -110,6 +110,27 @@ public class ServiceCatalogController {
         catalogService.removeStaffFromService(serviceId, staffId);
     }
 
+    /**
+     * GET /api/services/assignments/business/{businessId}/staff/{staffId}
+     * The service IDs a staff member can perform (used by the dashboard staff form).
+     * businessId in the path lets the tenant filter enforce ownership.
+     */
+    @GetMapping("/api/services/assignments/business/{businessId}/staff/{staffId}")
+    public List<Long> getServicesForStaff(@PathVariable Long businessId, @PathVariable Long staffId) {
+        return catalogService.getServiceIdsForStaff(businessId, staffId);
+    }
+
+    /**
+     * PUT /api/services/assignments/business/{businessId}/staff/{staffId}
+     * Replace the set of services this staff member can perform. Returns the new set.
+     */
+    @PutMapping("/api/services/assignments/business/{businessId}/staff/{staffId}")
+    public List<Long> setServicesForStaff(@PathVariable Long businessId, @PathVariable Long staffId,
+                                          @RequestBody StaffServicesRequest request) {
+        catalogService.setStaffServices(businessId, staffId, request.serviceIds());
+        return catalogService.getServiceIdsForStaff(businessId, staffId);
+    }
+
     @GetMapping("/api/categories/business/{businessId}")
     public List<CategoryDto> getCategories(@PathVariable Long businessId) {
         return catalogService.getCategoriesByBusiness(businessId);

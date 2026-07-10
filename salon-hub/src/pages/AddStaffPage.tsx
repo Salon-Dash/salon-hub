@@ -24,6 +24,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { useStaff } from "@/hooks/useStaff";
 import { useServices } from "@/hooks/useServices";
+import { serviceService } from "@/services/serviceService";
+import { useBusinessId } from "@/hooks/useBusinessId";
 import { useNavigation } from "@/utils/navigationUtils";
 import { toast } from "sonner";
 import {
@@ -36,6 +38,7 @@ import {
 export default function AddStaffPage() {
   const navigate = useNavigate();
   const { getPath } = useNavigation();
+  const businessId = useBusinessId();
   const { createStaff, loading: creating } = useStaff();
   const { services, loading: servicesLoading } = useServices();
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
@@ -77,15 +80,18 @@ export default function AddStaffPage() {
     }
 
     try {
-      await createStaff({
+      const created = await createStaff({
         name: formData.name,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         position: formData.position || undefined,
-        serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
         inviteAndCreateAccount: formData.inviteAndCreateAccount,
         schedule: scheduleToPayload(schedule),
       });
+      // Persist the staff↔service assignments (owned by service-catalog).
+      if (created?.id && selectedServiceIds.length > 0) {
+        await serviceService.setStaffServiceIds(businessId, created.id, selectedServiceIds);
+      }
       navigate(getPath("staff"));
     } catch (error: any) {
       console.error("Failed to create staff:", error);

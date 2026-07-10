@@ -176,6 +176,46 @@ public class ServiceCatalogService {
         assignmentRepository.deleteByServiceIdAndStaffId(serviceId, staffId);
     }
 
+    /**
+     * Service IDs (belonging to {@code businessId}) that {@code staffId} is assigned to.
+     * Used by the staff form to show which services a staff member can perform.
+     */
+    public java.util.List<Long> getServiceIdsForStaff(Long businessId, Long staffId) {
+        java.util.Set<Long> bizServices = serviceRepository.findByBusinessIdAndIsActiveTrue(businessId)
+            .stream().map(ServiceEntity::getId).collect(java.util.stream.Collectors.toSet());
+        return assignmentRepository.findByStaffId(staffId).stream()
+            .map(ServiceStaffAssignment::getServiceId)
+            .filter(bizServices::contains)
+            .distinct()
+            .toList();
+    }
+
+    /**
+     * Reconcile ONE staff member's service links to exactly match {@code serviceIds},
+     * restricted to services owned by {@code businessId}. Services outside the business
+     * are ignored (never created or deleted), so this can only ever change assignments
+     * within the caller's own tenant. A null list leaves assignments untouched.
+     */
+    @Transactional
+    public void setStaffServices(Long businessId, Long staffId, java.util.List<Long> serviceIds) {
+        if (serviceIds == null) return;
+        java.util.Set<Long> bizServices = serviceRepository.findByBusinessIdAndIsActiveTrue(businessId)
+            .stream().map(ServiceEntity::getId).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> desired = serviceIds.stream()
+            .filter(java.util.Objects::nonNull).filter(bizServices::contains)
+            .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<Long> current = assignmentRepository.findByStaffId(staffId).stream()
+            .map(ServiceStaffAssignment::getServiceId)
+            .filter(bizServices::contains)
+            .collect(java.util.stream.Collectors.toSet());
+        for (Long serviceId : desired) {
+            if (!current.contains(serviceId)) assignStaffToService(serviceId, staffId);
+        }
+        for (Long serviceId : current) {
+            if (!desired.contains(serviceId)) removeStaffFromService(serviceId, staffId);
+        }
+    }
+
     public List<CategoryDto> getCategoriesByBusiness(Long businessId) {
         return categoryRepository.findByBusinessId(businessId)
             .stream()
