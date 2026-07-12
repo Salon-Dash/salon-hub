@@ -282,12 +282,11 @@ function normalizeCustomerAuthResponse(payload: unknown, fallback?: { fullName?:
     (typeof data?.token === 'string' && data.token.trim()) ||
     (typeof data?.accessToken === 'string' && data.accessToken.trim()) ||
     '';
-  const customerId =
-    Number.isFinite(Number(data?.customerId))
-      ? Number(data.customerId)
-      : Number.isFinite(Number(user?.id))
-        ? Number(user.id)
-        : 0;
+  // The auth-service returns the id as `userId`; also accept `customerId`/`user.id`.
+  const idCandidate = [data?.customerId, data?.userId, data?.id, user?.id]
+    .map((v) => Number(v))
+    .find((n) => Number.isFinite(n) && n > 0);
+  const customerId = idCandidate ?? 0;
 
   if (!token) throw new Error('Authentication token missing in response.');
   if (!customerId) throw new Error('Customer id missing in response.');
