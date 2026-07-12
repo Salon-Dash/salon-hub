@@ -352,16 +352,22 @@ function normalizeCustomerBooking(payload: unknown, fallback?: { companyId?: num
 }
 
 export const api = {
-  registerCustomer: (payload: { fullName: string; email: string; password: string; phone?: string }) =>
-    request<unknown>('/api/public/auth/register/customer', 'POST', {
-      firstName: payload.fullName.trim().split(/\s+/)[0] || payload.fullName.trim(),
-      lastName: payload.fullName.trim().split(/\s+/).slice(1).join(' '),
+  registerCustomer: (payload: { fullName: string; email: string; password: string; phone?: string }) => {
+    const parts = payload.fullName.trim().split(/\s+/).filter(Boolean);
+    const firstName = parts[0] || payload.fullName.trim();
+    // Backend requires a non-blank lastName; if the user typed a single-word
+    // name, reuse the first name so registration still succeeds.
+    const lastName = parts.slice(1).join(' ') || firstName;
+    return request<unknown>('/api/public/auth/register/customer', 'POST', {
+      firstName,
+      lastName,
       email: payload.email,
       password: payload.password,
       ...(payload.phone ? { phone: payload.phone } : {}),
     }).then((response) =>
       normalizeCustomerAuthResponse(response, { fullName: payload.fullName, email: payload.email })
-    ),
+    );
+  },
   loginCustomer: (payload: { email: string; password: string }) =>
     requestWithFallback<unknown>(
       ['/api/public/auth/login'],
