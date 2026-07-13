@@ -171,6 +171,73 @@ public class CustomerBookingController {
     }
 
     /**
+     * PUT /api/customer/bookings/{id}
+     * Reschedule the authenticated customer's own booking to a new date/time.
+     * Business/service/staff stay the same; only the slot moves. Ownership is
+     * enforced by clientEmail, and the slot is conflict-checked (excluding this
+     * appointment itself).
+     */
+    @PutMapping("/bookings/{id}")
+    public ResponseEntity<Map<String, Object>> rescheduleMyBooking(
+            Authentication auth,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        if (auth == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String email = auth.getName();
+
+        Appointment appt = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+        if (appt.getClientEmail() == null || !appt.getClientEmail().equalsIgnoreCase(email)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This booking does not belong to you");
+        }
+
+        java.time.LocalDate newDate = body.get("appointmentDate") != null
+                ? java.time.LocalDate.parse(body.get("appointmentDate").toString())
+                : appt.getAppointmentDate();
+        java.time.LocalTime newStart = appt.getStartTime();
+        java.time.LocalTime newEnd = appt.getEndTime();
+        if (body.get("startTime") != null) {
+            String t = body.get("startTime").toString();
+            newStart = java.time.LocalTime.parse(t.length() >= 5 ? t.substring(0, 5) : t);
+        }
+        if (body.get("endTime") != null) {
+            String t = body.get("endTime").toString();
+            newEnd = java.time.LocalTime.parse(t.length() >= 5 ? t.substring(0, 5) : t);
+        }
+
+        // Conflict check — exclude THIS appointment so moving within its own window is fine.
+        if (appt.getStaffId() > 0 && newDate != null && newStart != null && newEnd != null) {
+            Integer conflicts = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM appointments WHERE staff_id = ? AND appointment_date = ? AND status != 'CANCELLED' AND id <> ? AND start_time < ? AND end_time > ?",
+                    Integer.class, appt.getStaffId(), newDate, id, newEnd, newStart);
+            if (conflicts != null && conflicts > 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
+            }
+        }
+
+        appt.setAppointmentDate(newDate);
+        appt.setStartTime(newStart);
+        appt.setEndTime(newEnd);
+        appt.setStatus("CONFIRMED");
+        Appointment saved;
+        try {
+            saved = appointmentRepository.save(appt);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
+        }
+        log.info("Customer booking id={} rescheduled by {}", saved.getId(), email);
+        broadcast(saved);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("id",              saved.getId());
+        resp.put("appointmentDate", saved.getAppointmentDate() != null ? saved.getAppointmentDate().toString() : "");
+        resp.put("startTime",       saved.getStartTime() != null ? saved.getStartTime().toString() : "");
+        resp.put("endTime",         saved.getEndTime()   != null ? saved.getEndTime().toString()   : "");
+        resp.put("status",          saved.getStatus());
+        return ResponseEntity.ok(resp);
+    }
+
+    /**
      * Push an appointment change to the dashboard's live calendar over WebSocket,
      * using the same topics the admin BookingController publishes to, so a booking
      * made from the customer app appears without a manual refresh.
