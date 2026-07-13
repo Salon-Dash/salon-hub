@@ -311,6 +311,21 @@ function toTimePart(isoLike: string): string {
   return '09:00:00';
 }
 
+// Date part in the SAME (local) frame as toTimePart. Slicing the ISO string
+// instead would read the UTC date, which diverges from the local wall-clock
+// time for late-evening/pre-dawn slots (and non-UTC+ timezones) — booking the
+// wrong day. Deriving both from local components keeps date and time aligned.
+function toDatePart(isoLike: string): string {
+  const parsed = new Date(isoLike);
+  if (!Number.isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return isoLike.slice(0, 10);
+}
+
 function normalizeCustomerBooking(payload: unknown, fallback?: { companyId?: number; companyName?: string }): CustomerBooking {
   const data = payload as AppointmentApiItem;
   const id = Number(data?.id ?? 0);
@@ -513,7 +528,7 @@ export const api = {
         businessId: payload.companyId,
         serviceId: payload.serviceId,
         ...(payload.staffId != null && payload.staffId !== 0 ? { staffId: payload.staffId } : {}),
-        appointmentDate: payload.startAt.slice(0, 10),
+        appointmentDate: toDatePart(payload.startAt),
         startTime: toTimePart(payload.startAt),
         endTime: toTimePart(payload.endAt),
         status: payload.status ?? 'BOOKED',
