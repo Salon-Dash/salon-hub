@@ -111,6 +111,45 @@ public class CustomerBookingController {
             }
         }
 
+        // "No preference": the app promises auto-assignment but sends no staffId.
+        // Resolve a concrete, least-busy eligible staff member here — storing 0
+        // would make the appointment belong to no staff column and vanish from the
+        // admin calendar (the actual bug a customer hit). Eligible = assigned to the
+        // service, active, working that weekday over the whole slot, and free.
+        if (appt.getStaffId() <= 0 && appt.getAppointmentDate() != null
+                && appt.getStartTime() != null && appt.getEndTime() != null) {
+            String weekday = appt.getAppointmentDate().getDayOfWeek().name(); // MONDAY..SUNDAY
+            Integer chosen;
+            try {
+                chosen = jdbcTemplate.queryForObject(
+                        "SELECT s.id FROM staff s " +
+                        "JOIN service_staff_assignments ssa ON ssa.staff_id = s.id AND ssa.service_id = ? " +
+                        "JOIN staff_working_hours wh ON wh.staff_id = s.id AND wh.day_of_week = ? AND wh.is_working = true " +
+                        "WHERE s.business_id = ? AND s.is_active = true " +
+                        "AND wh.start_time <= ? AND wh.end_time >= ? " +
+                        "AND NOT EXISTS (SELECT 1 FROM appointments c WHERE c.staff_id = s.id " +
+                        "  AND c.appointment_date = ? AND c.status <> 'CANCELLED' " +
+                        "  AND c.start_time < ? AND c.end_time > ?) " +
+                        "ORDER BY (SELECT COUNT(*) FROM appointments a WHERE a.staff_id = s.id " +
+                        "  AND a.appointment_date = ? AND a.status <> 'CANCELLED') ASC, s.id ASC " +
+                        "LIMIT 1",
+                        Integer.class,
+                        appt.getServiceId(), weekday, appt.getBusinessId(),
+                        appt.getStartTime(), appt.getEndTime(),
+                        appt.getAppointmentDate(), appt.getEndTime(), appt.getStartTime(),
+                        appt.getAppointmentDate());
+            } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+                chosen = null;
+            }
+            if (chosen == null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "No staff is available for this time. Please pick another slot.");
+            }
+            appt.setStaffId(chosen);
+            log.info("Auto-assigned staff {} for no-preference booking (service {}, {} {})",
+                    chosen, appt.getServiceId(), appt.getAppointmentDate(), appt.getStartTime());
+        }
+
         // Double-booking check
         if (appt.getStaffId() > 0 && appt.getAppointmentDate() != null && appt.getStartTime() != null && appt.getEndTime() != null) {
             Integer conflicts = jdbcTemplate.queryForObject(
