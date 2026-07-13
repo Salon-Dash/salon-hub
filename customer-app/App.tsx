@@ -21,6 +21,8 @@ import { BookingOutcomeScreen } from './screens/BookingOutcomeScreen';
 import { CustomerBookingScreen } from './screens/CustomerBookingScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
+import { PersonalInfoScreen } from './screens/PersonalInfoScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 import { ProfileUnsignedScreen } from './screens/ProfileUnsignedScreen';
 import { SearchScreen } from './screens/SearchScreen';
 import { WalletScreen } from './screens/WalletScreen';
@@ -174,6 +176,21 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
   const [customerName, setCustomerName] = useState('');
   const [bookings, setBookings] = useState<CustomerBooking[]>([]);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [personalInfoOpen, setPersonalInfoOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState('');
+
+  const doLogout = () => {
+    setProfileSignedIn(false);
+    setCustomerToken('');
+    setCustomerName('');
+    setCustomerEmail('');
+    setBookings([]);
+    setUpcomingBooking(null);
+    setWalletOpen(false);
+    setPersonalInfoOpen(false);
+    setSettingsOpen(false);
+  };
   const [bookingOutcome, setBookingOutcome] = useState<'accepted' | 'cancelled' | null>(null);
   const [bookingDetails, setBookingDetails] = useState<ConfirmedBookingSnapshot | null>(null);
 
@@ -216,11 +233,19 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
   }, [profileSignedIn, customerToken, customerName]);
 
   useEffect(() => {
-    if (tab !== 'profile') setWalletOpen(false);
+    if (tab !== 'profile') {
+      setWalletOpen(false);
+      setPersonalInfoOpen(false);
+      setSettingsOpen(false);
+    }
   }, [tab]);
 
   useEffect(() => {
-    if (!profileSignedIn) setWalletOpen(false);
+    if (!profileSignedIn) {
+      setWalletOpen(false);
+      setPersonalInfoOpen(false);
+      setSettingsOpen(false);
+    }
   }, [profileSignedIn]);
 
   useEffect(() => {
@@ -363,20 +388,31 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
         {tab === 'profile' && profileSignedIn && walletOpen && (
           <WalletScreen fonts={fonts} onBack={() => setWalletOpen(false)} />
         )}
-        {tab === 'profile' && profileSignedIn && !walletOpen && (
-          <ProfileScreen
+        {tab === 'profile' && profileSignedIn && personalInfoOpen && !walletOpen && (
+          <PersonalInfoScreen
             fonts={fonts}
-            userName={customerName}
-            onLogOut={() => {
-              setProfileSignedIn(false);
-              setCustomerToken('');
-              setCustomerName('');
-              setBookings([]);
-              setUpcomingBooking(null);
-            }}
-            onViewWallet={() => setWalletOpen(true)}
+            name={customerName}
+            email={customerEmail}
+            onBack={() => setPersonalInfoOpen(false)}
           />
         )}
+        {tab === 'profile' && profileSignedIn && settingsOpen && !walletOpen && !personalInfoOpen && (
+          <SettingsScreen fonts={fonts} onBack={() => setSettingsOpen(false)} onLogOut={doLogout} />
+        )}
+        {tab === 'profile' &&
+          profileSignedIn &&
+          !walletOpen &&
+          !personalInfoOpen &&
+          !settingsOpen && (
+            <ProfileScreen
+              fonts={fonts}
+              userName={customerName}
+              onLogOut={doLogout}
+              onViewWallet={() => setWalletOpen(true)}
+              onEditProfile={() => setPersonalInfoOpen(true)}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          )}
         {tab === 'profile' && !profileSignedIn && (
           <ProfileUnsignedScreen
             fonts={fonts}
@@ -396,6 +432,7 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
                     : await api.loginCustomer({ email: payload.email, password: payload.password });
               setCustomerToken(auth.token);
               setCustomerName(auth.fullName);
+              setCustomerEmail(auth.email ?? '');
               setProfileSignedIn(true);
               setBookings([]);
               if (pendingBookingAfterAuth) {
@@ -408,7 +445,7 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
             }}
           />
         )}
-        {!(tab === 'profile' && profileSignedIn && walletOpen) && (
+        {!(tab === 'profile' && profileSignedIn && (walletOpen || personalInfoOpen || settingsOpen)) && (
           <BottomTabBar active={tab} onChange={setTab} />
         )}
       </>

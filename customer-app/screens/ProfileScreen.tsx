@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ComponentProps } from 'react';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fadePressed, shadow } from '../constants/design';
@@ -16,14 +16,19 @@ type Props = {
   userName?: string;
   onLogOut?: () => void;
   onViewWallet?: () => void;
+  onEditProfile?: () => void;
+  onOpenSettings?: () => void;
 };
+
+// Platform support inbox — opens the device mail composer.
+const SUPPORT_EMAIL = 'support@salon-hub.com';
 
 const WALLET_BALANCE = (0).toLocaleString('pl-PL', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
-export function ProfileScreen({ fonts, userName, onLogOut, onViewWallet }: Props) {
+export function ProfileScreen({ fonts, userName, onLogOut, onViewWallet, onEditProfile, onOpenSettings }: Props) {
   const displayName = userName?.trim() || 'Customer';
   const initial = displayName.charAt(0).toUpperCase();
   const insets = useSafeAreaInsets();
@@ -75,17 +80,40 @@ export function ProfileScreen({ fonts, userName, onLogOut, onViewWallet }: Props
 
         <View style={styles.cluster}>
           <Text style={[styles.clusterTitle, { fontFamily: fonts.semibold }]}>Preferences</Text>
-          <CardAction fonts={fonts} icon="person-circle-outline" label="Personal info" onPress={impactLight} />
-          <CardAction fonts={fonts} icon="heart-outline" label="Saved places" onPress={impactLight} />
-          <CardAction fonts={fonts} icon="document-text-outline" label="Forms and consents" onPress={impactLight} />
-          <CardAction fonts={fonts} icon="options-outline" label="App settings" onPress={impactLight} />
+          <CardAction
+            fonts={fonts}
+            icon="person-circle-outline"
+            label="Personal info"
+            onPress={() => {
+              impactLight();
+              onEditProfile?.();
+            }}
+          />
+          <CardAction
+            fonts={fonts}
+            icon="options-outline"
+            label="App settings"
+            onPress={() => {
+              impactLight();
+              onOpenSettings?.();
+            }}
+          />
         </View>
 
         <View style={styles.cluster}>
           <Text style={[styles.clusterTitle, { fontFamily: fonts.semibold }]}>Help</Text>
-          <CardAction fonts={fonts} icon="help-circle-outline" label="Support" onPress={impactLight} />
-          <CardAction fonts={fonts} icon="language-outline" label="Language: English (Poland)" onPress={impactLight} />
+          <CardAction
+            fonts={fonts}
+            icon="help-circle-outline"
+            label="Support"
+            onPress={() => {
+              impactLight();
+              Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Salon%20Hub%20support`).catch(() => {});
+            }}
+          />
         </View>
+        {/* Deferred (need backend): Saved places (favorites), Forms & consents,
+            Language (i18n) — removed rather than shipped as no-op buttons. */}
 
         <Pressable
           style={({ pressed }) => [styles.signOutBtn, fadePressed(pressed)]}
