@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -149,6 +150,33 @@ public class AuthController {
         log.info("POST /api/auth/validate");
         ValidateResponse response = authService.validate(authHeader);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/auth/me
+     * Returns the authenticated user's own profile. Used by the customer app's
+     * Personal info screen. Principal (JWT subject) is the user's email.
+     */
+    @GetMapping("/api/auth/me")
+    public ResponseEntity<Map<String, Object>> getMe(Authentication auth) {
+        if (auth == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        log.info("GET /api/auth/me — [{}]", auth.getName());
+        return ResponseEntity.ok(authService.getProfile(auth.getName()));
+    }
+
+    /**
+     * PUT /api/auth/me
+     * Updates the authenticated user's editable profile fields (firstName,
+     * lastName, phone). Email/role are immutable. Returns the updated profile.
+     */
+    @PutMapping("/api/auth/me")
+    public ResponseEntity<Map<String, Object>> updateMe(Authentication auth, @RequestBody Map<String, Object> body) {
+        if (auth == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        log.info("PUT /api/auth/me — [{}]", auth.getName());
+        String firstName = body.get("firstName") != null ? body.get("firstName").toString() : null;
+        String lastName = body.get("lastName") != null ? body.get("lastName").toString() : null;
+        String phone = body.get("phone") != null ? body.get("phone").toString() : null;
+        return ResponseEntity.ok(authService.updateProfile(auth.getName(), firstName, lastName, phone));
     }
 
     /**

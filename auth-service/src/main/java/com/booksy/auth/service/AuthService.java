@@ -18,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -182,6 +184,47 @@ public class AuthService {
                         },
                         () -> log.warn("Logout called with unknown refresh token (already expired or deleted)")
                 );
+    }
+
+    /**
+     * Returns the authenticated user's own profile (by email = JWT subject).
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getProfile(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return profileMap(user);
+    }
+
+    /**
+     * Updates the authenticated user's editable profile fields (name, phone).
+     * Email and role are immutable here. Blank name fields are ignored so a
+     * partial update never wipes an existing name; a blank phone clears it.
+     */
+    @Transactional
+    public Map<String, Object> updateProfile(String email, String firstName, String lastName, String phone) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (firstName != null && !firstName.isBlank()) user.setFirstName(firstName.trim());
+        if (lastName != null && !lastName.isBlank()) user.setLastName(lastName.trim());
+        if (phone != null) user.setPhone(phone.isBlank() ? null : phone.trim());
+        user = userRepository.save(user);
+        log.info("Profile updated for user [{}]", user.getId());
+        return profileMap(user);
+    }
+
+    private Map<String, Object> profileMap(User user) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", user.getId());
+        m.put("email", user.getEmail());
+        m.put("firstName", user.getFirstName());
+        m.put("lastName", user.getLastName());
+        String first = user.getFirstName() == null ? "" : user.getFirstName();
+        String last = user.getLastName() == null ? "" : user.getLastName();
+        m.put("fullName", (first + " " + last).trim());
+        m.put("phone", user.getPhone());
+        m.put("role", user.getRole());
+        return m;
     }
 
     // -------------------------------------------------------------------------
