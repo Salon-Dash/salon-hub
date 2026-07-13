@@ -15,7 +15,6 @@ type Props = {
   fonts: FontFamilies;
   userName?: string;
   onLogOut?: () => void;
-  onViewWallet?: () => void;
   onEditProfile?: () => void;
   onOpenSettings?: () => void;
 };
@@ -23,12 +22,7 @@ type Props = {
 // Platform support inbox — opens the device mail composer.
 const SUPPORT_EMAIL = 'support@salon-hub.com';
 
-const WALLET_BALANCE = (0).toLocaleString('pl-PL', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-export function ProfileScreen({ fonts, userName, onLogOut, onViewWallet, onEditProfile, onOpenSettings }: Props) {
+export function ProfileScreen({ fonts, userName, onLogOut, onEditProfile, onOpenSettings }: Props) {
   const displayName = userName?.trim() || 'Customer';
   const initial = displayName.charAt(0).toUpperCase();
   const insets = useSafeAreaInsets();
@@ -55,28 +49,6 @@ export function ProfileScreen({ fonts, userName, onLogOut, onViewWallet, onEditP
             <Text style={[styles.avatarLetter, { fontFamily: fonts.bold }]}>{initial}</Text>
           </LinearGradient>
         </View>
-
-        <LinearGradient colors={['#5b21b6', '#7c3aed', '#c026d3']} style={styles.balanceCard}>
-          <View style={styles.balanceRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.balanceLabel, { fontFamily: fonts.regular }]}>Spendable balance</Text>
-              <Text style={[styles.balanceValue, { fontFamily: fonts.bold }]}>{WALLET_BALANCE} PLN</Text>
-            </View>
-            <View style={styles.pulseDot} />
-          </View>
-          <Pressable
-            style={({ pressed }) => [styles.balanceBtn, fadePressed(pressed)]}
-            onPress={() => {
-              impactLight();
-              onViewWallet?.();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Open wallet"
-          >
-            <Text style={[styles.balanceBtnText, { fontFamily: fonts.semibold }]}>Open wallet</Text>
-            <Ionicons name="arrow-forward" size={16} color="#f3e8ff" />
-          </Pressable>
-        </LinearGradient>
 
         <View style={styles.cluster}>
           <Text style={[styles.clusterTitle, { fontFamily: fonts.semibold }]}>Preferences</Text>
@@ -203,49 +175,6 @@ const styles = StyleSheet.create({
   avatarLetter: {
     fontSize: 23,
     color: '#ffffff',
-  },
-  balanceCard: {
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 18,
-    ...shadow.lift,
-  },
-  balanceRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  pulseDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#f9a8d4',
-    marginTop: 6,
-  },
-  balanceLabel: {
-    fontSize: 13,
-    color: '#ede9fe',
-  },
-  balanceValue: {
-    fontSize: 31,
-    letterSpacing: -0.6,
-    color: '#f8fafc',
-    marginTop: 4,
-  },
-  balanceBtn: {
-    marginTop: 14,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(243,232,255,0.45)',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    gap: 8,
-  },
-  balanceBtnText: {
-    fontSize: 14,
-    color: '#f3e8ff',
   },
   cluster: {
     marginBottom: 14,

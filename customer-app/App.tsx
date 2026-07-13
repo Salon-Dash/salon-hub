@@ -25,7 +25,6 @@ import { PersonalInfoScreen } from './screens/PersonalInfoScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { ProfileUnsignedScreen } from './screens/ProfileUnsignedScreen';
 import { SearchScreen } from './screens/SearchScreen';
-import { WalletScreen } from './screens/WalletScreen';
 import type { ConfirmedBookingSnapshot } from './types/booking';
 import type { FontFamilies } from './types/fonts';
 
@@ -178,7 +177,6 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
   const [customerToken, setCustomerToken] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [bookings, setBookings] = useState<CustomerBooking[]>([]);
-  const [walletOpen, setWalletOpen] = useState(false);
   const [personalInfoOpen, setPersonalInfoOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [customerEmail, setCustomerEmail] = useState('');
@@ -190,7 +188,6 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
     setCustomerEmail('');
     setBookings([]);
     setUpcomingBooking(null);
-    setWalletOpen(false);
     setPersonalInfoOpen(false);
     setSettingsOpen(false);
   };
@@ -237,7 +234,6 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
 
   useEffect(() => {
     if (tab !== 'profile') {
-      setWalletOpen(false);
       setPersonalInfoOpen(false);
       setSettingsOpen(false);
     }
@@ -245,7 +241,6 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
 
   useEffect(() => {
     if (!profileSignedIn) {
-      setWalletOpen(false);
       setPersonalInfoOpen(false);
       setSettingsOpen(false);
     }
@@ -398,10 +393,7 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
             }}
           />
         )}
-        {tab === 'profile' && profileSignedIn && walletOpen && (
-          <WalletScreen fonts={fonts} onBack={() => setWalletOpen(false)} />
-        )}
-        {tab === 'profile' && profileSignedIn && personalInfoOpen && !walletOpen && (
+        {tab === 'profile' && profileSignedIn && personalInfoOpen && (
           <PersonalInfoScreen
             fonts={fonts}
             token={customerToken}
@@ -413,19 +405,17 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
             }}
           />
         )}
-        {tab === 'profile' && profileSignedIn && settingsOpen && !walletOpen && !personalInfoOpen && (
+        {tab === 'profile' && profileSignedIn && settingsOpen && !personalInfoOpen && (
           <SettingsScreen fonts={fonts} onBack={() => setSettingsOpen(false)} onLogOut={doLogout} />
         )}
         {tab === 'profile' &&
           profileSignedIn &&
-          !walletOpen &&
           !personalInfoOpen &&
           !settingsOpen && (
             <ProfileScreen
               fonts={fonts}
               userName={customerName}
               onLogOut={doLogout}
-              onViewWallet={() => setWalletOpen(true)}
               onEditProfile={() => setPersonalInfoOpen(true)}
               onOpenSettings={() => setSettingsOpen(true)}
             />
@@ -462,7 +452,7 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
             }}
           />
         )}
-        {!(tab === 'profile' && profileSignedIn && (walletOpen || personalInfoOpen || settingsOpen)) && (
+        {!(tab === 'profile' && profileSignedIn && (personalInfoOpen || settingsOpen)) && (
           <BottomTabBar active={tab} onChange={setTab} />
         )}
       </>

@@ -172,8 +172,8 @@ export function HomeScreen({ fonts, onPressSearch, onOpenSalon }: Props) {
               fonts={fonts}
               onPressSalon={onOpenSalon}
             />
-            <ExploreSection fonts={fonts} categories={exploreCategories} />
-            <TopCategoriesSection fonts={fonts} categories={topCategories} />
+            <ExploreSection fonts={fonts} categories={exploreCategories} onSelect={onPressSearch} />
+            <TopCategoriesSection fonts={fonts} categories={topCategories} onSelect={onPressSearch} />
           </>
         )}
       </ScrollView>

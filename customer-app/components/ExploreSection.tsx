@@ -14,9 +14,11 @@ import type { CategoryTile } from '../types/discovery';
 type Props = {
   fonts: { regular: string; semibold: string; bold: string };
   categories: CategoryTile[];
+  /** Opens the browse/search surface. Wired to the tiles + "See all". */
+  onSelect?: () => void;
 };
 
-export function ExploreSection({ fonts, categories }: Props) {
+export function ExploreSection({ fonts, categories, onSelect }: Props) {
   const { width } = useWindowDimensions();
   const horizontalPadding = spacing.screenHorizontal;
   const gap = 10;
@@ -28,6 +30,7 @@ export function ExploreSection({ fonts, categories }: Props) {
         <Text style={[typography.sectionHeading, { fontFamily: fonts.bold }]}>Explore</Text>
         <Pressable
           hitSlop={12}
+          onPress={onSelect}
           style={({ pressed }) => fadePressed(pressed)}
           accessibilityRole="button"
           accessibilityLabel="See all explore categories"
@@ -39,6 +42,7 @@ export function ExploreSection({ fonts, categories }: Props) {
         {categories.map((item, index) => (
             <Pressable
               key={item.id}
+              onPress={onSelect}
               style={({ pressed }) => [
                 styles.tile,
                 {

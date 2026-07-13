@@ -8,11 +8,13 @@ import type { CategoryTile } from '../types/discovery';
 type Props = {
   fonts: { regular: string; semibold: string; bold: string };
   categories: CategoryTile[];
+  /** Opens the browse/search surface. Wired to the tiles + "See all". */
+  onSelect?: () => void;
 };
 
 const GAP = 12;
 
-export function TopCategoriesSection({ fonts, categories }: Props) {
+export function TopCategoriesSection({ fonts, categories, onSelect }: Props) {
   const { width } = useWindowDimensions();
   const pad = spacing.screenHorizontal * 2;
   const itemWidth = (width - pad - GAP * 2) / 3;
@@ -23,6 +25,7 @@ export function TopCategoriesSection({ fonts, categories }: Props) {
         <Text style={[typography.sectionHeading, { fontFamily: fonts.bold }]}>Top categories</Text>
         <Pressable
           hitSlop={12}
+          onPress={onSelect}
           style={({ pressed }) => fadePressed(pressed)}
           accessibilityRole="button"
           accessibilityLabel="See all categories"
@@ -34,6 +37,7 @@ export function TopCategoriesSection({ fonts, categories }: Props) {
         {categories.map((item, index) => (
           <Pressable
             key={item.id}
+            onPress={onSelect}
             style={({ pressed }) => [
               styles.cell,
               {
