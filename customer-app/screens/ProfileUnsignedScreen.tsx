@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -214,27 +215,20 @@ export function ProfileUnsignedScreen({ fonts, bookingGate, onClose, onSignedIn 
           </Text>
         </Pressable>
 
-        <View style={styles.businessBlock}>
-          <Text style={[styles.businessTitle, { fontFamily: fonts.bold }]}>
-            Have a business account?
-          </Text>
-          <Pressable onPress={() => {}} accessibilityRole="link">
-            <Text style={[styles.link, { fontFamily: fonts.semibold }]}>
-              Sign in as a professional
-            </Text>
-          </Pressable>
-        </View>
-
         <View style={styles.footerLinks}>
-          <Pressable style={styles.footerItem} onPress={() => {}} accessibilityRole="button">
-            <Ionicons name="globe-outline" size={18} color={colors.accent} style={styles.footerIcon} />
-            <Text style={[styles.footerLinkText, { fontFamily: fonts.semibold }]}>English</Text>
-          </Pressable>
-          <Pressable style={styles.footerItem} onPress={() => {}} accessibilityRole="button">
+          <Pressable
+            style={styles.footerItem}
+            onPress={() =>
+              Linking.openURL('mailto:support@salon-hub.com?subject=Salon%20Hub%20support').catch(() => {})
+            }
+            accessibilityRole="button"
+          >
             <Ionicons name="help-buoy-outline" size={18} color={colors.accent} style={styles.footerIcon} />
             <Text style={[styles.footerLinkText, { fontFamily: fonts.semibold }]}>Support</Text>
           </Pressable>
         </View>
+        {/* Removed: "Sign in as a professional" (needs the dashboard URL) and the
+            language switcher (i18n deferred) — both were dead no-op buttons. */}
       </ScrollView>
     </KeyboardAvoidingView>
   );
