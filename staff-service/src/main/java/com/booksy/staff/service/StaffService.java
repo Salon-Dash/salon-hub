@@ -139,7 +139,13 @@ public class StaffService {
                     "Staff member does not belong to the specified business");
         }
 
-        staff.setName(request.name());
+        // Partial-update safe: name is NOT NULL, so a request that omits it (e.g.
+        // saving only the schedule) must not wipe it — that raised a 500 and would
+        // erase the staff's name. Only overwrite when a non-blank name is provided;
+        // the nullable fields below stay clearable.
+        if (request.name() != null && !request.name().isBlank()) {
+            staff.setName(request.name());
+        }
         staff.setEmail(request.email());
         staff.setPhone(request.phone());
         staff.setPosition(request.position());
