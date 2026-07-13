@@ -2,6 +2,7 @@ package com.booksy.booking.controller;
 
 import com.booksy.booking.model.Appointment;
 import com.booksy.booking.repository.AppointmentRepository;
+import com.booksy.booking.service.NotificationClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,7 @@ public class CustomerBookingController {
     private final AppointmentRepository appointmentRepository;
     private final JdbcTemplate jdbcTemplate;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationClient notificationClient;
 
     /**
      * GET /api/customer/bookings
@@ -142,6 +144,7 @@ public class CustomerBookingController {
         }
         log.info("Customer booking created id={} for {}", saved.getId(), email);
         broadcast(saved); // push to the dashboard's live calendar (same topic admin bookings use)
+        notifyCustomer(saved, false); // email/notify the same way admin-created bookings do
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("id",              saved.getId());
@@ -177,6 +180,7 @@ public class CustomerBookingController {
         Appointment saved = appointmentRepository.save(appt);
         log.info("Customer booking id={} cancelled by {}", saved.getId(), email);
         broadcast(saved); // let the dashboard drop it from the live calendar in realtime
+        notifyCustomer(saved, true);
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("id",     saved.getId());
@@ -249,6 +253,7 @@ public class CustomerBookingController {
         }
         log.info("Customer booking id={} rescheduled by {}", saved.getId(), email);
         broadcast(saved);
+        notifyCustomer(saved, false); // re-confirm at the new time
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("id",              saved.getId());
@@ -269,5 +274,27 @@ public class CustomerBookingController {
         messagingTemplate.convertAndSend("/topic/appointments/" + appt.getBusinessId(), appt);
         messagingTemplate.convertAndSend(
                 "/topic/appointments/" + appt.getBusinessId() + "/staff/" + appt.getStaffId(), appt);
+    }
+
+    /**
+     * Fire the same booking notification the admin BookingController sends, so a
+     * self-service booking made from the customer app also reaches the salon (and
+     * the client). Fire-and-forget inside NotificationClient — a notification
+     * failure never breaks the booking. staffName/businessName are left null and
+     * resolved downstream, matching the admin path.
+     */
+    private void notifyCustomer(Appointment appt, boolean cancelled) {
+        if (appt == null) return;
+        if (cancelled) {
+            notificationClient.notifyBookingCancelled(
+                    appt.getId(), appt.getClientEmail(), appt.getClientName(), null,
+                    appt.getServiceName(), null, null,
+                    appt.getAppointmentDate(), appt.getStartTime(), appt.getEndTime(), appt.getPrice());
+        } else {
+            notificationClient.notifyBookingConfirmed(
+                    appt.getId(), appt.getClientEmail(), appt.getClientName(), null,
+                    appt.getServiceName(), null, null,
+                    appt.getAppointmentDate(), appt.getStartTime(), appt.getEndTime(), appt.getPrice());
+        }
     }
 }
