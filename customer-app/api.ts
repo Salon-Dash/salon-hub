@@ -411,15 +411,29 @@ export const api = {
     )
       .then((payload) => normalizeSalons(payload as PublicSalon[]).length ? normalizeSalons(payload as PublicSalon[]) : normalizeStudioSalons(payload))
       .catch(() => api.searchSalons('')),
-  salonServices: (companyId: number) =>
-    requestWithFallback<unknown>(
+  salonServices: async (companyId: number): Promise<SalonServicesResponse> => {
+    const payload = await requestWithFallback<unknown>(
       [
         `/api/public/salons/${companyId}/services`,
         `/api/public/studios/${companyId}/services`,
         `/api/public/studios/${companyId}`,
       ],
       'GET'
-    ).then((payload) => normalizeSalonServices(payload)),
+    ).catch(() => [] as unknown);
+    const normalized = normalizeSalonServices(payload);
+    // The /services endpoints return a bare services array with no team, so the
+    // staff picker comes back empty. Pull the salon's staff from the studio detail.
+    let staff = normalized.staff;
+    if (staff.length === 0) {
+      try {
+        const studio = (await request<any>(`/api/public/studios/${companyId}`, 'GET')) as any;
+        if (Array.isArray(studio?.staff)) staff = studio.staff as PublicStaff[];
+      } catch {
+        // leave staff empty — the "No preference" option still lets the user book
+      }
+    }
+    return { services: normalized.services, staff };
+  },
   salonProfile: (companyId: number) =>
     requestWithFallback<unknown>(
       [`/api/public/salons/${companyId}/profile`, `/api/public/studios/${companyId}`],
