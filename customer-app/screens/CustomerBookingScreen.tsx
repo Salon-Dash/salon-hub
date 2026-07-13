@@ -318,6 +318,9 @@ export function CustomerBookingScreen({
         priceLabel: `${totalPrice} zł`,
         mapRegion: { latitude: 50.06, longitude: 19.93, latitudeDelta: 0.05, longitudeDelta: 0.05 },
         addressFull: created.companyName,
+        serviceId: selectedService.id,
+        staffId: effectiveStaffIdForBooking ?? null,
+        durationMinutes: selectedService.durationMinutes + processingTotalMin,
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to confirm booking';

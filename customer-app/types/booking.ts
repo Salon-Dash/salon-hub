@@ -19,4 +19,9 @@ export type ConfirmedBookingSnapshot = {
     longitudeDelta: number;
   };
   addressFull: string;
+  // Optional context to power in-app reschedule (fetch slots for the same
+  // service/staff and move the booking). Absent on older/mock snapshots.
+  serviceId?: number;
+  staffId?: number | null;
+  durationMinutes?: number;
 };

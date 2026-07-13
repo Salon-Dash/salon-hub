@@ -1,10 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker } from 'react-native-maps';
 
+import { api } from '../api';
 import { colors, spacing } from '../constants/theme';
 import type { ConfirmedBookingSnapshot } from '../types/booking';
 import type { FontFamilies } from '../types/fonts';
@@ -12,12 +24,102 @@ import type { FontFamilies } from '../types/fonts';
 type Props = {
   fonts: FontFamilies;
   booking: ConfirmedBookingSnapshot;
+  token: string;
   onBack: () => void;
   onCancel?: () => void;
+  onRescheduled?: (updated: ConfirmedBookingSnapshot) => void;
 };
 
-export function BookingDetailsScreen({ fonts, booking, onBack, onCancel }: Props) {
+/** Add `mins` minutes to an "HH:mm" time, returning "HH:mm" (same day). */
+function addMinutes(hhmm: string, mins: number): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = h * 60 + m + mins;
+  const eh = Math.floor(total / 60) % 24;
+  const em = total % 60;
+  return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+}
+
+export function BookingDetailsScreen({ fonts, booking, token, onBack, onCancel, onRescheduled }: Props) {
   const insets = useSafeAreaInsets();
+
+  const canReschedule = booking.serviceId != null;
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [slots, setSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [pickedTime, setPickedTime] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Next 14 selectable days for the reschedule sheet.
+  const dateOptions = useMemo(() => {
+    const base = new Date();
+    return Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return {
+        iso,
+        weekday: d.toLocaleDateString(undefined, { weekday: 'short' }),
+        day: String(d.getDate()),
+      };
+    });
+  }, []);
+
+  // Load real bookable slots whenever the sheet opens or the chosen day changes.
+  useEffect(() => {
+    if (!rescheduleOpen || booking.serviceId == null || !selectedDate) return;
+    let active = true;
+    setLoadingSlots(true);
+    setPickedTime(null);
+    api
+      .salonSlots(Number(booking.businessId), booking.serviceId, selectedDate, booking.staffId ?? undefined)
+      .then((times) => {
+        if (active) setSlots(times);
+      })
+      .finally(() => {
+        if (active) setLoadingSlots(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [rescheduleOpen, selectedDate, booking.serviceId, booking.staffId, booking.businessId]);
+
+  const openReschedule = () => {
+    if (!canReschedule) {
+      Alert.alert('Reschedule', 'Rescheduling is not available for this booking. Please cancel and rebook.');
+      return;
+    }
+    setSelectedDate(dateOptions[0]?.iso ?? '');
+    setPickedTime(null);
+    setSlots([]);
+    setRescheduleOpen(true);
+  };
+
+  const submitReschedule = async () => {
+    if (!pickedTime || booking.serviceId == null) return;
+    const duration = booking.durationMinutes && booking.durationMinutes > 0 ? booking.durationMinutes : 60;
+    const endTime = addMinutes(pickedTime, duration);
+    setSubmitting(true);
+    try {
+      await api.rescheduleBooking(token, Number(booking.refId), {
+        appointmentDate: selectedDate,
+        startTime: pickedTime,
+        endTime,
+      });
+      const newStart = new Date(`${selectedDate}T${pickedTime}:00`);
+      const updated: ConfirmedBookingSnapshot = {
+        ...booking,
+        startIso: newStart.toISOString(),
+        timeHeadline: newStart.toLocaleString(),
+      };
+      setRescheduleOpen(false);
+      onRescheduled?.(updated);
+      Alert.alert('Rescheduled', 'Your appointment time has been updated.');
+    } catch (e) {
+      Alert.alert('Could not reschedule', e instanceof Error ? e.message : 'Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const openDirections = () => {
     const latitude = booking.mapRegion.latitude;
@@ -114,10 +216,7 @@ export function BookingDetailsScreen({ fonts, booking, onBack, onCancel }: Props
             <Text style={[styles.detailBody, { fontFamily: fonts.regular }]}>
               You can cancel at any time before your appointment.
             </Text>
-            <Pressable
-              style={styles.detailActionRow}
-              onPress={() => Alert.alert('Reschedule', 'Rescheduling is not yet available. Please cancel and rebook.')}
-            >
+            <Pressable style={styles.detailActionRow} onPress={openReschedule}>
               <Ionicons name="calendar-number-outline" size={20} color={colors.text} />
               <Text style={[styles.detailActionText, { fontFamily: fonts.regular }]}>Reschedule appointment</Text>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -150,6 +249,78 @@ export function BookingDetailsScreen({ fonts, booking, onBack, onCancel }: Props
           <Text style={[styles.refText, { fontFamily: fonts.regular }]}>Booking ref: {booking.refId}</Text>
         </View>
       </ScrollView>
+
+      <Modal visible={rescheduleOpen} animationType="slide" transparent onRequestClose={() => setRescheduleOpen(false)}>
+        <View style={styles.sheetBackdrop}>
+          <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { fontFamily: fonts.bold }]}>Reschedule</Text>
+              <Pressable onPress={() => setRescheduleOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
+                <Ionicons name="close" size={24} color={colors.text} />
+              </Pressable>
+            </View>
+
+            <Text style={[styles.sheetLabel, { fontFamily: fonts.semibold }]}>Pick a day</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
+              {dateOptions.map((opt) => {
+                const active = opt.iso === selectedDate;
+                return (
+                  <Pressable
+                    key={opt.iso}
+                    onPress={() => setSelectedDate(opt.iso)}
+                    style={[styles.dayChip, active && styles.dayChipActive]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${opt.weekday} ${opt.day}`}
+                  >
+                    <Text style={[styles.dayChipWeekday, { fontFamily: fonts.regular }, active && styles.dayChipTextActive]}>{opt.weekday}</Text>
+                    <Text style={[styles.dayChipDay, { fontFamily: fonts.bold }, active && styles.dayChipTextActive]}>{opt.day}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <Text style={[styles.sheetLabel, { fontFamily: fonts.semibold }]}>Available times</Text>
+            <View style={styles.slotArea}>
+              {loadingSlots ? (
+                <ActivityIndicator color="#6d4df2" style={{ marginVertical: 20 }} />
+              ) : slots.length === 0 ? (
+                <Text style={[styles.emptySlots, { fontFamily: fonts.regular }]}>No open times on this day. Try another.</Text>
+              ) : (
+                <View style={styles.slotGrid}>
+                  {slots.map((time) => {
+                    const active = time === pickedTime;
+                    return (
+                      <Pressable
+                        key={time}
+                        onPress={() => setPickedTime(time)}
+                        style={[styles.slotChip, active && styles.slotChipActive]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Time ${time}`}
+                      >
+                        <Text style={[styles.slotChipText, { fontFamily: fonts.semibold }, active && styles.slotChipTextActive]}>{time}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+
+            <Pressable
+              onPress={submitReschedule}
+              disabled={!pickedTime || submitting}
+              style={[styles.confirmBtn, (!pickedTime || submitting) && styles.confirmBtnDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm new time"
+            >
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={[styles.confirmBtnText, { fontFamily: fonts.semibold }]}>Confirm new time</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -298,4 +469,62 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
   },
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: spacing.screenHorizontal,
+    paddingTop: 16,
+    maxHeight: '82%',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sheetTitle: { fontSize: 22, color: colors.text, letterSpacing: -0.6 },
+  sheetLabel: { fontSize: 14, color: colors.textMuted, marginTop: 8, marginBottom: 10 },
+  dayRow: { gap: 8, paddingRight: 8 },
+  dayChip: {
+    width: 54,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e6e6ea',
+    alignItems: 'center',
+    gap: 2,
+  },
+  dayChipActive: { backgroundColor: '#6d4df2', borderColor: '#6d4df2' },
+  dayChipWeekday: { fontSize: 12, color: colors.textMuted },
+  dayChipDay: { fontSize: 17, color: colors.text },
+  dayChipTextActive: { color: '#fff' },
+  slotArea: { minHeight: 60 },
+  slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  slotChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e6e6ea',
+  },
+  slotChipActive: { backgroundColor: '#6d4df2', borderColor: '#6d4df2' },
+  slotChipText: { fontSize: 15, color: colors.text },
+  slotChipTextActive: { color: '#fff' },
+  emptySlots: { fontSize: 14, color: colors.textMuted, paddingVertical: 18 },
+  confirmBtn: {
+    marginTop: 18,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#6d4df2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnDisabled: { opacity: 0.45 },
+  confirmBtnText: { fontSize: 16, color: '#fff' },
 });

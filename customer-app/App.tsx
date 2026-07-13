@@ -112,6 +112,9 @@ async function toUpcomingSnapshotFromBooking(booking: CustomerBooking): Promise<
     priceLabel: typeof servicePrice === 'number' ? `${servicePrice} zł` : '—',
     mapRegion,
     addressFull,
+    serviceId: booking.serviceId ?? undefined,
+    staffId: booking.staffId ?? null,
+    durationMinutes,
   };
 }
 
@@ -284,6 +287,16 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
       <BookingDetailsScreen
         fonts={fonts}
         booking={bookingDetails}
+        token={customerToken}
+        onRescheduled={(updated) => {
+          // Reflect the new time immediately in the open details + upcoming card,
+          // then let the bookings poll reconcile the list.
+          setBookingDetails(updated);
+          setUpcomingBooking((prev) => (prev && prev.refId === updated.refId ? updated : prev));
+          if (customerToken) {
+            void api.listBookings(customerToken).then(setBookings).catch(() => {});
+          }
+        }}
         onBack={() => setBookingDetails(null)}
         onCancel={async () => {
           if (bookingDetails?.refId && customerToken) {

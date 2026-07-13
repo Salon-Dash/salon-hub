@@ -70,6 +70,9 @@ export function ActivityScreen({
       priceLabel: servicePrice != null ? `${servicePrice} zł` : '—',
       mapRegion: { latitude: 50.06, longitude: 19.93, latitudeDelta: 0.05, longitudeDelta: 0.05 },
       addressFull: booking.companyName || `Salon #${booking.companyId}`,
+      serviceId: booking.serviceId ?? undefined,
+      staffId: booking.staffId ?? null,
+      durationMinutes,
     };
   };
   const { upcomingItems, pastItems } = useMemo(() => {

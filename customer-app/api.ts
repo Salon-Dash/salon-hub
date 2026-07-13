@@ -516,4 +516,19 @@ export const api = {
     ).catch(() =>
       request<unknown>(`/api/appointments/${bookingId}`, 'DELETE', undefined, token)
     ),
+  rescheduleBooking: (
+    token: string,
+    bookingId: number,
+    payload: { appointmentDate: string; startTime: string; endTime: string }
+  ) =>
+    requestWithFallback<unknown>(
+      [`/api/appointments/${bookingId}`, `/api/customer/bookings/${bookingId}`],
+      'PUT',
+      {
+        appointmentDate: payload.appointmentDate,
+        startTime: payload.startTime,
+        endTime: payload.endTime,
+      },
+      token
+    ),
 };
