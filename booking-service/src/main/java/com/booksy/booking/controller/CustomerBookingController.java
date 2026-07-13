@@ -21,6 +21,10 @@ import java.util.Map;
 /**
  * Endpoints for the customer mobile app.
  * All routes under /api/customer/** require a valid CUSTOMER JWT.
+ *
+ * Time handling: appointments store naive salon wall-clock (LocalDate/LocalTime).
+ * The container runs TZ=Europe/Warsaw so now() matches the salon, and both
+ * create + reschedule reject past times server-side.
  */
 @RestController
 @RequestMapping("/api/customer")
