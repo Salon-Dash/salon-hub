@@ -1,5 +1,10 @@
 server:
   port: ${SERVER_PORT:8082}
+  error:
+    # Surface the exception reason (e.g. "Email is already registered",
+    # "Password must be at least 8 characters") so the client can show a
+    # meaningful message instead of a generic status.
+    include-message: always
 
 spring:
   application:
