@@ -95,6 +95,16 @@ public class CustomerBookingController {
             appt.setEndTime(java.time.LocalTime.parse(t.length() >= 5 ? t.substring(0, 5) : t));
         }
 
+        // Reject bookings in the past. now() is the salon wall-clock (container
+        // TZ=Europe/Warsaw), so this holds even for direct API calls that bypass
+        // the app's slot list (which already hides past times).
+        if (appt.getAppointmentDate() != null && appt.getStartTime() != null) {
+            java.time.LocalDateTime when = java.time.LocalDateTime.of(appt.getAppointmentDate(), appt.getStartTime());
+            if (when.isBefore(java.time.LocalDateTime.now())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot book a time in the past");
+            }
+        }
+
         // Double-booking check
         if (appt.getStaffId() > 0 && appt.getAppointmentDate() != null && appt.getStartTime() != null && appt.getEndTime() != null) {
             Integer conflicts = jdbcTemplate.queryForObject(
@@ -203,6 +213,14 @@ public class CustomerBookingController {
         if (body.get("endTime") != null) {
             String t = body.get("endTime").toString();
             newEnd = java.time.LocalTime.parse(t.length() >= 5 ? t.substring(0, 5) : t);
+        }
+
+        // Reject rescheduling into the past (salon wall-clock via container TZ).
+        if (newDate != null && newStart != null) {
+            java.time.LocalDateTime when = java.time.LocalDateTime.of(newDate, newStart);
+            if (when.isBefore(java.time.LocalDateTime.now())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot reschedule to a time in the past");
+            }
         }
 
         // Conflict check — exclude THIS appointment so moving within its own window is fine.

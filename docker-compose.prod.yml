@@ -1,6 +1,11 @@
 version: '3.9'
 
 x-common-env: &common-env
+  # Wall-clock timezone for all services. Appointments store naive LocalDate/
+  # LocalTime (salon wall-clock); slot engine compares against now(), so the JVM
+  # default zone MUST match the salons' real timezone or past slots get offered
+  # (e.g. UTC container offered 14:00/15:00 when it was already 15:41 in Poland).
+  TZ: Europe/Warsaw
   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/booksy_platform
   SPRING_DATASOURCE_USERNAME: ${DB_USER:-booksy}
   SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
