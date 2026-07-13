@@ -57,8 +57,8 @@ export function ProfileUnsignedScreen({ fonts, bookingGate, onClose, onSignedIn 
       setEmailError('That doesn’t look like a valid email. Use a format like name@example.com.');
       return;
     }
-    if (!password.trim() || password.trim().length < 6) {
-      setEmailError('Password must be at least 6 characters.');
+    if (!password.trim() || password.trim().length < 8) {
+      setEmailError('Password must be at least 8 characters.');
       return;
     }
     if (mode === 'register' && fullName.trim().length < 2) {
