@@ -404,9 +404,13 @@ function MainTabs({ fonts }: { fonts: FontFamilies }) {
         {tab === 'profile' && profileSignedIn && personalInfoOpen && !walletOpen && (
           <PersonalInfoScreen
             fonts={fonts}
+            token={customerToken}
             name={customerName}
             email={customerEmail}
             onBack={() => setPersonalInfoOpen(false)}
+            onSaved={(fullName) => {
+              if (fullName.trim()) setCustomerName(fullName.trim());
+            }}
           />
         )}
         {tab === 'profile' && profileSignedIn && settingsOpen && !walletOpen && !personalInfoOpen && (

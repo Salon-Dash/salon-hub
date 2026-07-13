@@ -350,6 +350,30 @@ function normalizeCustomerBooking(payload: unknown, fallback?: { companyId?: num
   };
 }
 
+export type CustomerProfile = {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  phone: string | null;
+  role: string;
+};
+
+function normalizeProfile(raw: any): CustomerProfile {
+  const firstName = String(raw?.firstName ?? '');
+  const lastName = String(raw?.lastName ?? '');
+  return {
+    id: Number(raw?.id ?? 0),
+    email: String(raw?.email ?? ''),
+    firstName,
+    lastName,
+    fullName: String(raw?.fullName ?? `${firstName} ${lastName}`.trim()),
+    phone: raw?.phone != null && String(raw.phone).trim() ? String(raw.phone) : null,
+    role: String(raw?.role ?? ''),
+  };
+}
+
 export const api = {
   registerCustomer: (payload: { fullName: string; email: string; password: string; phone?: string }) => {
     const parts = payload.fullName.trim().split(/\s+/).filter(Boolean);
@@ -378,6 +402,13 @@ export const api = {
     ).then((response) =>
       normalizeCustomerAuthResponse(response, { email: payload.email })
     ),
+  getProfile: (token: string) =>
+    requestWithFallback<unknown>(['/api/auth/me'], 'GET', undefined, token).then(normalizeProfile),
+  updateProfile: (
+    token: string,
+    payload: { firstName?: string; lastName?: string; phone?: string }
+  ) =>
+    requestWithFallback<unknown>(['/api/auth/me'], 'PUT', payload, token).then(normalizeProfile),
   searchSalons: (
     query: string,
     bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number },
