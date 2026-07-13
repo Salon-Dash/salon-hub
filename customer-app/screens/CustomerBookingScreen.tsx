@@ -222,7 +222,11 @@ export function CustomerBookingScreen({
       setTimeOptions([]);
       return;
     }
-    const day = selectedDate.toISOString().slice(0, 10);
+    // Use the LOCAL calendar date, not toISOString() — selectedDate is local
+    // midnight, and toISOString() shifts it to the previous UTC day in any zone
+    // east of UTC (Baku UTC+4, Warsaw UTC+2), so the user would see the wrong
+    // day's availability (off by one).
+    const day = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
     const staffId = wantPickStaff ? selectedStaffId ?? undefined : undefined;
     let cancelled = false;
     api
