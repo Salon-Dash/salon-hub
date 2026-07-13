@@ -44,6 +44,11 @@ public class SecurityConfig {
                         ).permitAll()
                         // Actuator health check for load-balancers / Eureka
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        // The internal ERROR dispatch (Spring forwards here on any 4xx/5xx)
+                        // must be reachable unauthenticated; otherwise a validation (400)
+                        // or conflict (409) on a public endpoint is re-denied as an empty
+                        // 403, masking the real status and message from the client.
+                        .requestMatchers("/error").permitAll()
                         // Everything else under /api/auth/** requires a valid JWT
                         .anyRequest().authenticated()
                 )
