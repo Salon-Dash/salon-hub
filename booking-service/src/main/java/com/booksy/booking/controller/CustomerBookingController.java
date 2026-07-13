@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,6 +30,7 @@ public class CustomerBookingController {
 
     private final AppointmentRepository appointmentRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final SimpMessagingTemplate messagingTemplate;
 
     /**
      * GET /api/customer/bookings
@@ -125,6 +127,7 @@ public class CustomerBookingController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
         }
         log.info("Customer booking created id={} for {}", saved.getId(), email);
+        broadcast(saved); // push to the dashboard's live calendar (same topic admin bookings use)
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("id",              saved.getId());
@@ -159,10 +162,23 @@ public class CustomerBookingController {
         appt.setStatus("CANCELLED");
         Appointment saved = appointmentRepository.save(appt);
         log.info("Customer booking id={} cancelled by {}", saved.getId(), email);
+        broadcast(saved); // let the dashboard drop it from the live calendar in realtime
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("id",     saved.getId());
         resp.put("status", saved.getStatus());
         return ResponseEntity.ok(resp);
+    }
+
+    /**
+     * Push an appointment change to the dashboard's live calendar over WebSocket,
+     * using the same topics the admin BookingController publishes to, so a booking
+     * made from the customer app appears without a manual refresh.
+     */
+    private void broadcast(Appointment appt) {
+        if (appt == null) return;
+        messagingTemplate.convertAndSend("/topic/appointments/" + appt.getBusinessId(), appt);
+        messagingTemplate.convertAndSend(
+                "/topic/appointments/" + appt.getBusinessId() + "/staff/" + appt.getStaffId(), appt);
     }
 }
