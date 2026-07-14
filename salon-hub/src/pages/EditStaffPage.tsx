@@ -75,7 +75,13 @@ export default function EditStaffPage() {
           availableForOnlineBooking: staff.canBookAppointments || false,
           description: "",
         });
-        setSchedule(weekFromWorkingHours(staff.workingHoursStart, staff.workingHoursEnd));
+        // Load the staff's saved hours. If they have none yet (new/unconfigured
+        // staff), start from a sensible enabled Mon–Fri week instead of all-off,
+        // so the owner just adjusts and saves — an all-off form saves 0 hours,
+        // which silently makes the staff unbookable.
+        const loaded = weekFromWorkingHours(staff.workingHoursStart, staff.workingHoursEnd);
+        const hasAnyHours = Object.values(loaded).some((d) => d.enabled);
+        setSchedule(hasAnyHours ? loaded : DEFAULT_WEEK);
         // Which services this staff can perform lives in service-catalog, not on the
         // staff record — load it from the assignments endpoint.
         try {
